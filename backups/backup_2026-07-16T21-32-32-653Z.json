@@ -1,0 +1,269 @@
+{
+  "timestamp": "2026-07-16T21:32:32.256Z",
+  "projectId": "gen-lang-client-0575954264",
+  "dbId": "ai-studio-dce0cccb-11f2-4cb5-842d-bba3d7dabbfb",
+  "collections": {
+    "leads": [],
+    "testimonials": [
+      {
+        "id": "test-2",
+        "date": "28/04/2026",
+        "clientCompany": "Pusat Perubatan Penawar",
+        "clientName": "Puan Nooraini Zakaria",
+        "rating": 5,
+        "verified": true,
+        "feedback": "Kerja pendawaian semula sistem elektrik backup kecemasan dan pemasangan panel agihan (DB) yang dilakukan sangat kemas dan mematuhi piawaian Suruhanjaya Tenaga. Penerangan teknikal yang diberikan juga sangat jelas.",
+        "userId": "admin-seed-2"
+      },
+      {
+        "id": "test-3",
+        "feedback": "Respons yang sangat pantas daripada pasukan penyelenggaraan HVAC Bena Flash Global! Apabila sistem pendingin hawa utama kami mengalami kerosakan, mereka tiba dalam masa 2 jam dan menyelesaikan pembaikan dengan segera. Sangat disyorkan!",
+        "userId": "admin-seed-3",
+        "clientName": "En. Faris Hakimi",
+        "rating": 5,
+        "verified": true,
+        "clientCompany": "Apex Logistics Hub",
+        "date": "15/05/2026"
+      }
+    ],
+    "projects": [
+      {
+        "id": "proj-1",
+        "location": "Kawasan Padang Polo, Pekan, Pahang",
+        "title": "Kerja-Kerja Pendawaian Dalaman di Padang Polo B, Pekan",
+        "category": "Electrical",
+        "status": "Completed",
+        "description": "Pendawaian elektrik dalaman utama bagi fasa perlindungan premium di bangunan sukan polo, kelolaan kualiti tenaga bertingkat.",
+        "value": "RM 236,000",
+        "client": "Kelab Polo Diraja Pahang",
+        "img": "https://picsum.photos/800/600",
+        "completionDate": "01/01/2025"
+      },
+      {
+        "id": "proj-1782423940455",
+        "documents": [],
+        "client": "JUTA NALURI SDN BHD",
+        "completionDate": "JULY 2026",
+        "documentsText": "",
+        "value": "RM 28,500",
+        "img": "https://lh3.googleusercontent.com/ZB0YRNR0P8DUX6SXALyOXXEXK-wdhUHuvQgCHOHCR5sa4NSXm1CDoSqlMZoHru4=w600",
+        "imgBefore": "https://lh3.googleusercontent.com/sLRULnLwX9zFhkewA3yRn1KjO3asFHhvh-KYDwOZSnWPgYAJqRImMBw5JE8N06k=w600",
+        "images": [
+          "https://lh3.googleusercontent.com/37vA9yrGzAjGiuaztMxl3ge_Szt8-oJPuNC57Zp7SL5bQKP_bYOo6lyW1gmauxc=w600",
+          "https://lh3.googleusercontent.com/6mXFC0ZvVBMGLMrxCYOOtMUIJ5mviFNCl9SpLoGassWFAwiG19EEGnA6x9cr6g=w600"
+        ],
+        "location": "KERETA API , PADANG POLO A PEKAN PAHANG DARUL MAKMUR",
+        "title": "KERJA KERJA PENDAWAIAN DI KERETA API",
+        "category": "Electrical",
+        "imagesText": "https://lh3.googleusercontent.com/37vA9yrGzAjGiuaztMxl3ge_Szt8-oJPuNC57Zp7SL5bQKP_bYOo6lyW1gmauxc=w600\nhttps://lh3.googleusercontent.com/6mXFC0ZvVBMGLMrxCYOOtMUIJ5mviFNCl9SpLoGassWFAwiG19EEGnA6x9cr6g=w600",
+        "status": "In Progress",
+        "description": "Skop Tugas:\nKerja kerja membuat laluan paip\ndan pemasangan paip\n\nSkop Tugas:\nKerja kerja mencabut siling\nbahagian tengah keretapi untuk\nlaluan paip dan kabel"
+      },
+      {
+        "id": "proj-2",
+        "location": "Rumah Tun Razak & Balai Permaisuri, Pekan, Pahang",
+        "category": "M&E Works",
+        "title": "Kerja Pendawaian Tambahan di Pusat Tenun Pulau Keladi",
+        "status": "Completed",
+        "description": "Pemasangan tambahan pendawaian litar elektrik premium serta pemasangan sistem pendingin hawa bersepadu untuk Rumah Tun Razak.",
+        "value": "RM 189,000",
+        "client": "Yayasan Tenun Pahang Diraja",
+        "img": "https://picsum.photos/800/600",
+        "completionDate": "30/06/2024"
+      },
+      {
+        "id": "proj-3",
+        "category": "M&E Works",
+        "title": "Menaiktaraf Pencahayaan Jalan Masuk Kuantan By-Pass",
+        "location": "Kuantan, Pahang",
+        "description": "Sistem pencahayaan premium jalan masuk Kuantan By-Pass serta kerja-kerja elektrik berkaitan bagi tawaran semula sivil.",
+        "status": "Completed",
+        "client": "South Asia Growth Sdn Bhd",
+        "img": "https://picsum.photos/800/600",
+        "value": "RM 104,375",
+        "completionDate": "15/09/2023"
+      },
+      {
+        "id": "proj-4",
+        "completionDate": "04/08/2025",
+        "value": "RM 100,000",
+        "img": "https://picsum.photos/800/600",
+        "client": "Jabatan Kerja Raya (JKR) Pahang",
+        "status": "Completed",
+        "description": "Pembekalan ramah alam dan pemasangan bertingkat tiang berserta lampu solar LED pintar di luar bandar.",
+        "location": "Jalan Cheroh (Seksyen 20.60), C5, Raub, Pahang",
+        "category": "Solar PV",
+        "title": "Pemasangan Lampu Solar LED Jalan Cheroh (Raub)"
+      },
+      {
+        "id": "proj-5",
+        "completionDate": "15/07/2023",
+        "value": "RM 70,000",
+        "client": "Jabatan Kerja Raya JKR / Kerajaan Negeri",
+        "img": "https://picsum.photos/800/600",
+        "status": "Completed",
+        "description": "Projek menaiktaraf pendawaian elektrik, pemasangan papan suis, serta litar pencahayaan antik bersejarah.",
+        "location": "Pekan, Pahang",
+        "category": "M&E Works",
+        "title": "Menaiktaraf Muzium Masjid Sultan Abdullah Pekan"
+      },
+      {
+        "id": "proj-6",
+        "status": "Completed",
+        "description": "Pendawaian permukaan kekubah (surface) di tapak homestay warisan budaya kebangsaan.",
+        "location": "Pulau Keladi, Pekan, Pahang",
+        "title": "Kerja Pendawaian Permukaan Homestay Pusat Tenun Pulau Keladi",
+        "category": "Electrical",
+        "completionDate": "12/06/2024",
+        "value": "RM 70,000",
+        "img": "https://picsum.photos/800/600",
+        "client": "Yayasan Tenun Pahang Diraja"
+      }
+    ],
+    "careers": [
+      {
+        "id": "job-1",
+        "salary": "RM 4,500 - RM 7,500",
+        "requirements": [
+          "Memiliki perakuan kekompetenan Chargeman A4 atau B4 daripada Suruhanjaya Tenaga (ST).",
+          "Sekurang-kurangnya 3 tahun pengalaman dalam mengendalikan Main Switchboard (MSB) voltan rendah (HT adalah kelebihan).",
+          "Berkebolehan memimpin juruteknik, mengawal selia aspek keselamatan elektrik berpandukan Akta Bekalan Elektrik.",
+          "Kekompetenan dalam ujian suntikan arus dan penyelenggaraan berkala transformer."
+        ],
+        "department": "M&E Engineering Division",
+        "title": "Chargeman A4 / B4 (Penyelia Elektrikal)",
+        "location": "Kuala Lumpur & Selangor",
+        "jobType": "Full-time",
+        "status": "Active"
+      },
+      {
+        "id": "job-2",
+        "location": "Outstation (Seluruh Malaysia)",
+        "requirements": [
+          "Memiliki Sijil Kekompetenan Pendawai Tiga Fasa (PW4) dengan pengesahan Endosmen Ujian.",
+          "Familiar dengan lukisan litar skematik elektrikal, pemasangan trunking/conduit, penyambungan DB utama.",
+          "Sikap kerja yang selamat, sanggup bekerja outstation (elaun khas disediakan).",
+          "Boleh bekerja di bawah pemantauan minimum daripada Chargeman/Project Manager."
+        ],
+        "salary": "RM 2,500 - RM 3,800",
+        "title": "Wireman PW4 (Pendawai Elektrik)",
+        "department": "Project Operations Team",
+        "status": "Active",
+        "jobType": "Full-time"
+      },
+      {
+        "id": "job-3",
+        "status": "Active",
+        "jobType": "Contract",
+        "location": "Selangor",
+        "title": "Aircond / HVAC Technician Senior",
+        "department": "HVAC Servicing & Contract Maintenance",
+        "requirements": [
+          "Sijil Vokasional / Diploma Kejuruteraan Mekanikal (Penyejukan & Penyaman Udara).",
+          "Mahir mengendalikan sistem pendingin hawa gred komersial (Chiller, VRF/VRV, Cooling Tower, AHU).",
+          "Lancar mendiagnosis kebocoran gas, pertukaran compressor, pembersihan kimia, troubleshoot litar kawalan.",
+          "Mempunyai lesen Memandu GDL atau sekurang-kurangnya Kelas D adalah kelebihan utama."
+        ],
+        "salary": "RM 3,000 - RM 4,500"
+      }
+    ],
+    "blogs": [
+      {
+        "id": "blog-1",
+        "title": "Panduan Memilih Kontraktor Elektrikal G2 Yang Layak Untuk Projek Industri",
+        "readTime": "5 minit",
+        "category": "Projek Korporat",
+        "date": "01/06/2026",
+        "content": "Apabila syarikat anda merancang untuk melakukan pemasangan elektrikal berskala besar bagi bangunan industri, pemilihan kontraktor tidak boleh diambil ringan. Kontraktor elektrik berkaliber G2 bermaksud syarikat tersebut mempunyai kapasiti berlesen Gred G2 untuk mengendalikan nilai projek sehingga RM 500,000.\n\nPertama, pastikan mereka berdaftar dengan CIDB (Lembaga Pembangunan Industri Pembinaan). Seterusnya, pastikan syarikat mempunyai sijil pendaftaran sebagai Kontraktor Elektrik Kelas C/B/A di bawah Suruhanjaya Tenaga. Ketiga, periksa rekod keselamatan (safety track record) dan kelengkapan insurans liabiliti awam untuk melindungi harta benda kilang anda semasa pelaksanaan kerja.",
+        "img": "https://picsum.photos/800/600",
+        "snippet": "Ketahui kriteria pensijilan penting seperti kelas CIDB, sistem insurans liabiliti, dan keahlian ST yang menentukan kredibiliti kontraktor utama anda.",
+        "author": "Zulhelmi Rosli, Pengarah Projek"
+      },
+      {
+        "id": "blog-1782424596387",
+        "author": "MUHAMMAD YUSRI BIN DZULKEFLI  - KONTRAKTOR ELEKTRIK ",
+        "images": [
+          "https://lh3.googleusercontent.com/llRhP3_B5kBc3RlO-6nNsP6Zs_NbdLBzWmWEChvkTyNKSSKA0xxYK6JUcJBR7Og=w600",
+          "https://lh3.googleusercontent.com/005G3FJeE9CJEKvCdpFvZYv_gy7U-33nsIVb18csfh1ajcYH1MS6KNfOzDbAaw=w600",
+          "https://lh3.googleusercontent.com/9pP0DmKJ0DWzBH7WRBJVLzWoFwLZpWMG3cy7Y28v1jdqNCSI10acFpcr5b37m50=w600",
+          "https://lh3.googleusercontent.com/9pP0DmKJ0DWzBH7WRBJVLzWoFwLZpWMG3cy7Y28v1jdqNCSI10acFpcr5b37m50=w600"
+        ],
+        "snippet": "",
+        "img": "https://lh3.googleusercontent.com/ZB0YRNR0P8DUX6SXALyOXXEXK-wdhUHuvQgCHOHCR5sa4NSXm1CDoSqlMZoHru4=w600",
+        "date": "26/06/2026",
+        "content": "Skop Tugas: Kerja kerja mencabut bekalan kuastnb(blackboard)\n\nSkop Tugas:\nKerja kerja menggali dan membuat\nlaluan kabel incoming tnb\nSkop Tugas:\nKerja kerja memasang corrigated\ndan lay amor kabel\nSkop Tugas:\nKerja kerja membuat laluan\nkabel,memasang corrigated pipe\ndan lay amor kabel ke keretapi",
+        "imagesText": "https://lh3.googleusercontent.com/llRhP3_B5kBc3RlO-6nNsP6Zs_NbdLBzWmWEChvkTyNKSSKA0xxYK6JUcJBR7Og=w600\nhttps://lh3.googleusercontent.com/005G3FJeE9CJEKvCdpFvZYv_gy7U-33nsIVb18csfh1ajcYH1MS6KNfOzDbAaw=w600\nhttps://lh3.googleusercontent.com/9pP0DmKJ0DWzBH7WRBJVLzWoFwLZpWMG3cy7Y28v1jdqNCSI10acFpcr5b37m50=w600\nhttps://lh3.googleusercontent.com/9pP0DmKJ0DWzBH7WRBJVLzWoFwLZpWMG3cy7Y28v1jdqNCSI10acFpcr5b37m50=w600",
+        "title": " KERJA KERJA PENDAWAIAN DI PADANG POLO A PEKAN PAHANG",
+        "readTime": "5 minit",
+        "category": "Projek Korporat"
+      },
+      {
+        "id": "blog-2",
+        "title": "Kepentingan Suntikan Arus Sekunder & Pengujian Relay Perlindungan MSB",
+        "readTime": "8 minit",
+        "category": "Informasi Teknikal",
+        "date": "18/05/2026",
+        "content": "Banyak pemilik premis komersial dan kilang mengabaikan peranti perlindungan dalam Main Switch Board (MSB) mereka sehinggalah berlaku kerosakan letupan atau blackout tidak dijangka yang merugikan ratusan ribu ringgit.\n\nRelay perlindungan (protection relays) adalah 'otak' yang mengesan kerosakan arus lebih (overcurrent) atau kebocoran bumi (earth fault) dan memberi arahan kepada Air Circuit Breaker (ACB) untuk trip. Pengujian suntikan arus sekunder (secondary injection testing) mensimulasikan keadaan kerosakan ini untuk menentu ukur kepekaan relay. Di bawah garis panduan Suruhanjaya Tenaga, bangunan komersial sangat digalakkan menjalankan audit kesihatan MSB secara berjadual.",
+        "img": "https://picsum.photos/800/600",
+        "snippet": "Mengapa bangunan kilang lama wajib melakukan pengujian penentukuran breaker sekali setiap 2 tahun demi mengelakkan letupan papan suis dan 'blackout' kilang.",
+        "author": "Ir. Ahmad Shahrir, Jurutera Elektrik Kompeten"
+      },
+      {
+        "id": "blog-3",
+        "snippet": "Perbandingan jimat tenaga, kemudahan kawalan, dan jangka hayat sistem ducting VRV berbanding sistem penyaman udara konvensional komersial.",
+        "author": "Nor Azman, Pakar Sistem HVAC",
+        "img": "https://picsum.photos/800/600",
+        "date": "10/05/2026",
+        "content": "Sistem Variable Refrigerant Volume (VRV) atau Variable Refrigerant Flow (VRF) merupakan teknologi penyaman udara tercanggih untuk bangunan moden yang mengutamakan kelestarian tenaga.\n\nSistem ini membolehkan satu unit pemeluwap luar (outdoor condenser unit) disambungkan kepada banyak unit penyebar dalaman (indoor units). Pemampat penyongsang (inverter compressor) akan melaraskan kadar aliran bahan pendingin secara dinamik mengikut beban terma sebenar di setiap zon bilik. Ini memberikan penjimatan tenaga bil elektrik sehingga 30-40% berbanding sistem aircond Split atau Chiller berskala rendah lama.",
+        "category": "HVAC & Pendingin Hawa",
+        "readTime": "6 minit",
+        "title": "Kelebihan Pemasangan Sistem Penyejukan Aliran Bahan Sejuk VRV / VRF"
+      }
+    ],
+    "applications": [],
+    "inventory": [
+      {
+        "id": "inv-1",
+        "name": "Gas Pendingin Hawa R32",
+        "category": "Aircond",
+        "unit": "kg",
+        "stock": 45,
+        "minStock": 15
+      },
+      {
+        "id": "inv-2",
+        "stock": 120,
+        "minStock": 30,
+        "category": "Wiring",
+        "unit": "meter",
+        "name": "Kabel Elektrik Fajar 1.5mm"
+      },
+      {
+        "id": "inv-3",
+        "category": "Aircond",
+        "unit": "kaki",
+        "name": "Paip Kuprum Daikin 1/2 inch",
+        "stock": 85,
+        "minStock": 20
+      },
+      {
+        "id": "inv-4",
+        "stock": 35,
+        "minStock": 10,
+        "unit": "unit",
+        "category": "Aksesori",
+        "name": "Soket Dinding Schneider 13A"
+      },
+      {
+        "id": "inv-5",
+        "stock": 12,
+        "minStock": 5,
+        "category": "Wiring",
+        "unit": "unit",
+        "name": "Kotak DB Elektrik Hager 12-Way"
+      }
+    ],
+    "inventory_transactions": [],
+    "support_tickets": []
+  }
+}

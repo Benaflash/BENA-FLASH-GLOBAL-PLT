@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-07-08T21:00:03.519Z",
+  "projectId": "gen-lang-client-0575954264",
+  "dbId": "ai-studio-dce0cccb-11f2-4cb5-842d-bba3d7dabbfb",
+  "collections": {
+    "leads": [],
+    "testimonials": [],
+    "projects": [],
+    "careers": [],
+    "blogs": [],
+    "applications": [],
+    "inventory": [],
+    "inventory_transactions": [],
+    "support_tickets": []
+  }
+}
