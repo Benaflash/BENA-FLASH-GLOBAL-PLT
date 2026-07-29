@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Basic rules to enable functionality while providing some isolation
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && (request.auth.token.email == "admin@bfgplt.com" || exists(/databases/$(database)/documents/admins/$(request.auth.uid))); }
+    
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+    match /company/{companyId} {
+      allow read: if true;
+    }
+    match /projects/{projectId} {
+      allow read: if true;
+    }
+    match /certifications/{certId} {
+      allow read: if true;
+    }
+    match /careers/{careerId} {
+      allow read: if true;
+    }
+    match /applications/{applicationId} {
+      // Allow public creation and read of applications for backup/portal access
+      allow read, create: if true;
+    }
+    match /inventory/{itemId} {
+      allow read, write: if true;
+    }
+    match /inventory_transactions/{transId} {
+      allow read, write: if true;
+    }
+    match /leads/{leadId} {
+      // Allow public creation and querying
+      allow read, create: if true;
+    }
+    match /notifications/{notificationId} {
+      // Allow public creation of notifications when a booking is made
+      allow create: if true;
+    }
+    match /blogs/{blogId} {
+      allow read: if true;
+    }
+    match /clientLogos/{logoId} {
+      allow read: if true;
+    }
+    match /staff/{staffId} {
+      allow read: if true;
+    }
+    match /documents/{docId} {
+      allow read: if true;
+    }
+    match /services/{serviceId} {
+      allow read: if true;
+    }
+    match /calculatorRates/{rateId} {
+      allow read: if true;
+    }
+    match /testimonials/{testimonialId} {
+      allow read, create: if true;
+    }
+    match /faqs/{faqId} {
+      allow read: if true;
+    }
+    match /support_tickets/{ticketId} {
+      allow read, write: if true;
+    }
+    match /live_chats/{chatId} {
+      allow read, write: if true;
+    }
+    match /fcm_push_notifications/{notifId} {
+      allow read, write: if true;
+    }
+    match /fcm_subscriptions/{subId} {
+      allow read, write: if true;
+    }
+    match /backups/{backupId} {
+      allow read, write: if true;
+    }
+  }
+}
