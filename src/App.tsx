@@ -6,6 +6,7 @@ import WelcomeVoiceGreeting from "./components/WelcomeVoiceGreeting";
 import React, { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { motion, AnimatePresence } from "motion/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import {
   initialCompanyInfo,
   initialProjects,
@@ -5882,6 +5883,8 @@ export default function App() {
       {/* WELCOME VOICE GREETING & LIVE CHAT FIRESTORE WIDGET */}
       <WelcomeVoiceGreeting />
       <LiveChatWidget />
+      {/* VERCEL SPEED INSIGHTS */}
+      <SpeedInsights />
     </div>
   );
 }
