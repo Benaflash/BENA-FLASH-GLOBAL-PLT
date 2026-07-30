@@ -1,1223 +1,494 @@
 import React, { useState, useEffect } from "react";
 import {
-  Copy,
-  Check,
-  FileText,
+  Phone,
   Mail,
-  Calendar,
-  HelpCircle,
-  HardDrive,
-  Video,
-  LogIn,
+  MapPin,
+  ShoppingBag,
   ExternalLink,
-  RefreshCw,
-  MessageSquare,
-  Table,
-  ListTodo,
-  Users,
-  StickyNote,
-  Type,
-  MonitorPlay,
-  MousePointer2,
-  Settings,
+  Sun,
+  Moon,
+  Lock,
+  Unlock,
+  Menu,
+  X,
+  Smartphone,
+  ChevronRight,
+  ShieldCheck,
+  Zap,
+  Globe,
+  Briefcase,
+  Award,
+  FileText,
+  UserCheck,
+  Home,
+  Info,
+  Wrench,
+  FolderGit2,
+  BookOpen,
 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { translations } from "../translations";
 
-interface GoogleWorkspaceHubProps {
-  oauthAccessToken: string | null;
-  onGoogleSignIn: () => void;
+interface HeaderNavigationProps {
+  companyInfo: any;
+  activeTab: string;
+  handleTabChange: (tabId: string) => void;
+  lang: "MS" | "EN";
+  setLang: (lang: "MS" | "EN") => void;
+  theme: "light" | "dark";
+  toggleTheme: () => void;
+  isScrolled: boolean;
+  isAdminMode: boolean;
+  setIsAdminMode: (val: boolean) => void;
+  isLoggedIn: boolean;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (val: boolean) => void;
+  setShowInstallModal: (val: boolean) => void;
+  isPageTransitioning: boolean;
+  isLoading: boolean;
 }
 
-export default function GoogleWorkspaceHub({
-  oauthAccessToken,
-  onGoogleSignIn,
-}: GoogleWorkspaceHubProps) {
-  const [activeSubTab, setActiveSubTab] = useState<
-    | "sheets"
-    | "drive"
-    | "gmail"
-    | "chat"
-    | "calendar"
-    | "docs"
-    | "slides"
-    | "tasks"
-    | "forms"
-    | "contacts"
-    | "keep"
-    | "picker"
-  >("drive");
-  const [copied, setCopied] = useState(false);
+export const HeaderNavigation: React.FC<HeaderNavigationProps> = ({
+  companyInfo,
+  activeTab,
+  handleTabChange,
+  lang,
+  setLang,
+  theme,
+  toggleTheme,
+  isScrolled,
+  isAdminMode,
+  setIsAdminMode,
+  isLoggedIn,
+  isMobileMenuOpen,
+  setIsMobileMenuOpen,
+  setShowInstallModal,
+  isPageTransitioning,
+  isLoading,
+}) => {
+  const t = translations[lang];
 
-  // Google Chat API State
-  const [chatSpaces, setChatSpaces] = useState<any[]>([]);
-  const [loadingChat, setLoadingChat] = useState(false);
-  const [chatStatus, setChatStatus] = useState("");
-  const [selectedSpace, setSelectedSpace] = useState("");
-  const [chatMessageText, setChatMessageText] = useState(
-    "Salam pasukan M&E BFG! Ini adalah kemas kini status sistem mendalam terus daripada Portal Pentadbir.",
-  );
-  const [sendingChat, setSendingChat] = useState(false);
-
-  // Drive API State
-  const [driveFiles, setDriveFiles] = useState<any[]>([]);
-  const [loadingDrive, setLoadingDrive] = useState(false);
-  const [driveStatus, setDriveStatus] = useState("");
-
-  // Gmail API State
-  const [mailTo, setMailTo] = useState("admin@bfgplt.com");
-  const [mailSubject, setMailSubject] = useState("Notifikasi Test Bena Flash");
-  const [mailBody, setMailBody] = useState(
-    "Salam sejahtera, ini adalah e-mel percubaan dari sistem integrasi google workspace BFG PLT.",
-  );
-  const [mailStatus, setMailStatus] = useState("");
-  const [sendingMail, setSendingMail] = useState(false);
-
-  // Calendar API State
-  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
-  const [loadingCal, setLoadingCal] = useState(false);
-  const [calStatus, setCalStatus] = useState("");
-  // New Event Form State
-  const [eventTitle, setEventTitle] = useState("Site Visit & Audit M&E");
-  const [eventDesc, setEventDesc] = useState(
-    "Pemeriksaan litar elektrikal dan pemasangan pendingin hawa di tapak.",
-  );
-  const [eventDate, setEventDate] = useState(
-    () => new Date().toISOString().split("T")[0],
-  );
-  const [eventStartTime, setEventStartTime] = useState("10:00");
-  const [eventEndTime, setEventEndTime] = useState("11:30");
-  const [withMeet, setWithMeet] = useState(true);
-
-  // Extra Workspace Apps State
-  const [tasksLists, setTasksLists] = useState<any[]>([]);
-  const [contacts, setContacts] = useState<any[]>([]);
-  const [docsFiles, setDocsFiles] = useState<any[]>([]);
-  const [slidesFiles, setSlidesFiles] = useState<any[]>([]);
-  const [formsFiles, setFormsFiles] = useState<any[]>([]);
-  const [pickerUrl, setPickerUrl] = useState("");
-
-  // Fetch Drive Files dynamically when OAuth Token changes
+  // Close drawer on escape key
   useEffect(() => {
-    if (oauthAccessToken && activeSubTab === "drive") {
-      fetchDriveFiles();
-    }
-  }, [oauthAccessToken, activeSubTab]);
-
-  // Fetch Calendar events
-  useEffect(() => {
-    if (oauthAccessToken && activeSubTab === "calendar") {
-      fetchCalendarEvents();
-    }
-  }, [oauthAccessToken, activeSubTab]);
-
-  useEffect(() => {
-    if (!oauthAccessToken) return;
-    if (activeSubTab === "tasks") {
-      fetch("https://tasks.googleapis.com/tasks/v1/users/@me/lists", {
-        headers: { Authorization: `Bearer ${oauthAccessToken}` },
-      })
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.items) setTasksLists(d.items);
-        })
-        .catch(console.error);
-    }
-    if (activeSubTab === "contacts") {
-      fetch(
-        "https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses",
-        { headers: { Authorization: `Bearer ${oauthAccessToken}` } },
-      )
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.connections) setContacts(d.connections);
-        })
-        .catch(console.error);
-    }
-    if (activeSubTab === "docs")
-      fetchDriveMime("application/vnd.google-apps.document", setDocsFiles);
-    if (activeSubTab === "slides")
-      fetchDriveMime(
-        "application/vnd.google-apps.presentation",
-        setSlidesFiles,
-      );
-    if (activeSubTab === "forms")
-      fetchDriveMime("application/vnd.google-apps.form", setFormsFiles);
-  }, [oauthAccessToken, activeSubTab]);
-
-  const fetchDriveMime = (mime: string, setter: any) => {
-    fetch(
-      `https://www.googleapis.com/drive/v3/files?q=mimeType='${mime}'&pageSize=10&fields=files(id,name,webViewLink)`,
-      { headers: { Authorization: `Bearer ${oauthAccessToken}` } },
-    )
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.files) setter(d.files);
-      })
-      .catch(console.error);
-  };
-
-  // APP SCRIPT SOURCE CODE LENGKAP
-  const appsScriptCode = `/**
- * BENA FLASH GLOBAL PLT - Google Sheets Database Sync & Admin API
- * Web App URL Endpoint to receive lead submissions, projects, certifications, careers, settings and audit logs.
- * 
- * CARA SETUP:
- * 1. Di Google Drive, bina Google Sheet baru dan beri nama "Bena Flash Global - database".
- * 2. Di dalam Sheet tersebut, pastikan nama Tab (Helaian) adalah seperti berikut:
- *    "Leads", "Projects", "CompanyInfo", "Certifications", "Applications", "AdminLogs", "AppSettings"
- * 3. Buka Google Sheet tersebut, klik "Extensions > Apps Script".
- * 4. Padam semua kod lalai, tampal kod lengkap di bawah, gantikan ID Google Sheet anda.
- * 5. Klik "Deploy > New Deployment". Pilih "Web app".
- * 6. Setkan: "Execute as: Me" dan "Who has access: Anyone".
- * 7. Salin pautan Web App URL yang diberikan dan masukkan di ruangan "CMS Settings" tab Analitis di laman web BFG atau di .env sebagai VITE_GOOGLE_APPS_SCRIPT_URL.
- */
-
-var SPREADSHEET_ID = ""; // Ganti dengan ID Google Sheet anda jika mahu mengunci Sheet tertentu, atau kosongkan untuk auto-pautan.
-
-var APPROVED_EMAILS = [
-  "admin@bfgplt.com",
-  "benaflash@gmail.com",
-  "benaflash2026@gmail.com",
-  "benaflashglobal@gmail.com",
-  "benaflashglobal2026@gmail.com"
-];
-
-function doPost(e) {
-  try {
-    var rawData = e.postData.contents;
-    var data = JSON.parse(rawData);
-    var action = data.action;
-    var payload = data.payload || {};
-    var clientEmail = data.adminEmail || "";
-    
-    var ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
-    
-    // Senarai tindakan pentadbir (perlu pengesahan)
-    var adminActions = [
-      "add_project", "delete_project", "update_company", 
-      "update_certifications", "admin_login_log", "save_setting",
-      "delete_lead", "delete_certification", "delete_blog"
-    ];
-    
-    // Semak pengesahan jika tindakan pentadbir dipanggil
-    if (adminActions.indexOf(action) !== -1) {
-      if (!clientEmail || APPROVED_EMAILS.indexOf(clientEmail.trim().toLowerCase()) === -1) {
-        return ContentService.createTextOutput(JSON.stringify({ 
-          status: "denied", 
-          message: "Akses ditolak! Emel tidak disahkan sebagai pentadbir." 
-        })).setMimeType(ContentService.MimeType.JSON);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
       }
-    }
-    
-    if (action === "admin_login_log") {
-      var sheet = getOrCreateSheet(ss, "AdminLogs");
-      if (sheet.getLastRow() === 0) {
-        sheet.appendRow(["Timestamp", "Email", "Action", "Status"]);
-      }
-      sheet.appendRow([
-        new Date().toISOString(),
-        clientEmail,
-        payload.actionType || "LOG_IN",
-        payload.status || "SUCCESS"
-      ]);
-    }
-    else if (action === "save_setting") {
-      var sheet = getOrCreateSheet(ss, "AppSettings");
-      if (sheet.getLastRow() === 0) {
-        sheet.appendRow(["SettingKey", "SettingValue", "UpdatedBy", "Timestamp"]);
-      }
-      // Semak jika setting sedia ada untuk dikemaskini
-      var keyToFind = payload.key;
-      var valToSet = payload.value;
-      var dataRange = sheet.getDataRange();
-      var values = dataRange.getValues();
-      var foundIndex = -1;
-      
-      for (var i = 1; i < values.length; i++) {
-        if (values[i][0] === keyToFind) {
-          foundIndex = i + 1; // 1-based index
-          break;
-        }
-      }
-      
-      if (foundIndex !== -1) {
-        sheet.getRange(foundIndex, 2).setValue(valToSet);
-        sheet.getRange(foundIndex, 3).setValue(clientEmail);
-        sheet.getRange(foundIndex, 4).setValue(new Date().toISOString());
-      } else {
-        sheet.appendRow([keyToFind, valToSet, clientEmail, new Date().toISOString()]);
-      }
-    }
-    else if (action === "add_lead") {
-      var sheet = getOrCreateSheet(ss, "Leads");
-      if (sheet.getLastRow() === 0) {
-        sheet.appendRow(["ID", "Name", "Email", "Phone", "Service Type / Message", "Physical Address", "Date Submitted", "Status", "Rating"]);
-      }
-      sheet.appendRow([
-        payload.id || "",
-        payload.name || "",
-        payload.email || "",
-        payload.phone || "",
-        payload.serviceType || payload.message || "",
-        payload.address || "",
-        new Date().toISOString(),
-        payload.status || "New",
-        payload.rating || ""
-      ]);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMobileMenuOpen, setIsMobileMenuOpen]);
 
-      // Hantar Notifikasi Emel Serta-merta ke Admin
-      var emailSubject = "[Tempahan BFG PLT Website] Sebut Harga Baru: " + (payload.name || "");
-      var emailBody = "Salam Pentadbir,\\n\\nTerdapat selarasan tempahan/borang sebut harga masuk baru dari laman web:\\n\\n" +
-                      "Nama: " + (payload.name || "") + "\\n" +
-                      "E-mel: " + (payload.email || "") + "\\n" +
-                      "No Tel: " + (payload.phone || "") + "\\n" +
-                      "Skop Perkhidmatan: " + (payload.serviceType || "") + "\\n" +
-                      "Lokasi: " + (payload.location || "") + "\\n" +
-                      "Mesej: " + (payload.message || "") + "\\n\\n" +
-                      "Butiran ini telah disimpan di dalam helaian Leads Google Sheet.\\n\\nSistem Automasi BFG PLT";
-      try {
-        MailApp.sendEmail("admin@bfgplt.com, benaflash@gmail.com", emailSubject, emailBody);
-      } catch(e) {}
-    }
-    else if (action === "update_lead") {
-      var sheet = getOrCreateSheet(ss, "Leads");
-      var dataRange = sheet.getDataRange();
-      var values = dataRange.getValues();
-      var idToFind = payload.id;
-      for (var i = 1; i < values.length; i++) {
-        if (values[i][0] === idToFind) {
-          if (payload.status) sheet.getRange(i + 1, 8).setValue(payload.status);
-          if (payload.rating) sheet.getRange(i + 1, 9).setValue(payload.rating);
-          break;
-        }
-      }
-    }
-    else if (action === "delete_lead") {
-      var sheet = getOrCreateSheet(ss, "Leads");
-      var dataRange = sheet.getDataRange();
-      var values = dataRange.getValues();
-      var idToFind = payload.id;
-      for (var i = values.length - 1; i >= 1; i--) {
-        if (values[i][0] === idToFind) {
-          sheet.deleteRow(i + 1);
-          break;
-        }
-      }
-    }
-    else if (action === "add_project") {
-      var sheet = getOrCreateSheet(ss, "Projects");
-      if (sheet.getLastRow() === 0) {
-        sheet.appendRow(["ID", "Title", "Client", "Category", "Status", "Date Added"]);
-      }
-      sheet.appendRow([
-        payload.id || "",
-        payload.title || "",
-        payload.client || "",
-        payload.category || "",
-        payload.status || "",
-        new Date().toISOString()
-      ]);
-    }
-    else if (action === "delete_project") {
-      var sheet = getOrCreateSheet(ss, "Projects");
-      var dataRange = sheet.getDataRange();
-      var values = dataRange.getValues();
-      var idToFind = payload.id;
-      for (var i = values.length - 1; i >= 1; i--) {
-        if (values[i][0] === idToFind) {
-          sheet.deleteRow(i + 1);
-          break;
-        }
-      }
-    }
-    else if (action === "update_company") {
-      var sheet = getOrCreateSheet(ss, "CompanyInfo");
-      sheet.clear();
-      sheet.appendRow(["Field", "Value"]);
-      for (var key in payload) {
-        sheet.appendRow([key, typeof payload[key] === 'object' ? JSON.stringify(payload[key]) : payload[key]]);
-      }
-    }
-    else if (action === "update_certifications") {
-      var sheet = getOrCreateSheet(ss, "Certifications");
-      sheet.clear();
-      sheet.appendRow(["ID", "Name", "Issuing Body", "Registration No", "Validity"]);
-      if (Array.isArray(payload)) {
-        payload.forEach(function(cert) {
-          sheet.appendRow([
-            cert.id || "",
-            cert.name || "",
-            cert.issuingBody || "",
-            cert.registrationNo || "",
-            cert.validity || ""
-          ]);
-        });
-      }
-    }
-    else if (action === "add_application") {
-      var sheet = getOrCreateSheet(ss, "Applications");
-      if (sheet.getLastRow() === 0) {
-        sheet.appendRow(["ID", "Career ID", "Name", "Email", "Phone", "Date Submitted"]);
-      }
-      sheet.appendRow([
-        payload.id || "",
-        payload.careerId || "",
-        payload.name || "",
-        payload.email || "",
-        payload.phone || "",
-        new Date().toISOString()
-      ]);
+  const navigationItems = [
+    { id: "home", label: t.home, icon: Home, badge: null, category: "Utama" },
+    { id: "about", label: t.about, icon: Info, badge: null, category: "Utama" },
+    { id: "services", label: t.services, icon: Wrench, badge: "M&E", category: "Perkhidmatan" },
+    { id: "projects", label: t.projects, icon: FolderGit2, badge: "Pahang", category: "Perkhidmatan" },
+    { id: "certificates", label: t.certificates, icon: Award, badge: "CIDB G2", category: "Aplikasi & Perakuan" },
+    { id: "customer-portal", label: t.customerPortal || "Portal Pelanggan", icon: UserCheck, badge: "Sistem Live", category: "Aplikasi & Perakuan" },
+    { id: "blog", label: t.blog, icon: BookOpen, badge: null, category: "Info & Sumber" },
+    { id: "career", label: t.career, icon: Briefcase, badge: "Kerjaya", category: "Info & Sumber" },
+    { id: "downloads", label: t.documents, icon: FileText, badge: "Muat Turun", category: "Info & Sumber" },
+    { id: "contact", label: t.contact, icon: Phone, badge: null, category: "Hubungi" },
+  ];
 
-      // Hantar Notifikasi Emel Kerjaya Calon Serta-Merta ke Admin
-      var emailSubject = "[Kerjaya BFG Website] Permohonan Jawatan Baru: " + (payload.careerTitle || "") + " - " + (payload.name || "");
-      var emailBody = "Salam Pentadbir,\\n\\nTerdapat permohonan jawatan baru dihantar oleh calon melalui portal kerjaya:\\n\\n" +
-                      "Nama Calon: " + (payload.name || "") + "\\n" +
-                      "Jawatan Diminta: " + (payload.careerTitle || "") + "\\n" +
-                      "E-mel Calon: " + (payload.email || "") + "\\n" +
-                      "No Tel: " + (payload.phone || "") + "\\n" +
-                      "Ringkasan Kualifikasi:\\n" + (payload.experienceSummary || "") + "\\n\\n" +
-                      "Sila layari Dashboard Admin untuk memuat turun dokumen sokongan sedia ada.\\n\\nSistem Automasi BFG PLT";
-      try {
-        MailApp.sendEmail("admin@bfgplt.com, benaflash@gmail.com", emailSubject, emailBody);
-      } catch(e) {}
-    }
-    
-    return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Data diselaraskan secara langsung ke Google Sheet!" }))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
+  const categories = ["Utama", "Perkhidmatan", "Aplikasi & Perakuan", "Info & Sumber", "Hubungi"];
 
-function doGet(e) {
-  var ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
-  var action = e.parameter.action;
-  
-  if (action === "get_settings") {
-    var sheet = getOrCreateSheet(ss, "AppSettings");
-    var values = sheet.getDataRange().getValues();
-    var settings = {};
-    for (var i = 1; i < values.length; i++) {
-      settings[values[i][0]] = values[i][1];
-    }
-    return ContentService.createTextOutput(JSON.stringify(settings))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-  
-  return HtmlService.createHtmlOutput("<h2>Bena Flash Global - Google Sheets Sync API Aktif</h2><p>Penyambung ini dipasang dengan sifar ralat. Sila gunakan permintaan POST untuk menyegerakan data anda secara automatik.</p>");
-}
-
-function getOrCreateSheet(ss, name) {
-  var sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-  }
-  return sheet;
-}`;
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(appsScriptCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  // Google Drive REST API List
-  const fetchDriveFiles = async () => {
-    if (!oauthAccessToken) return;
-    setLoadingDrive(true);
-    setDriveStatus("");
-    try {
-      const res = await fetch(
-        "https://www.googleapis.com/drive/v3/files?pageSize=6&fields=files(id,name,mimeType,thumbnailLink,webViewLink,iconLink)",
-        {
-          headers: { Authorization: `Bearer ${oauthAccessToken}` },
-        },
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setDriveFiles(data.files || []);
-      } else {
-        const err = await res.json();
-        setDriveStatus(
-          `Gagal memuat naik fail Drive: ${err.error?.message || "Ralat tidak diketahui"}`,
-        );
-      }
-    } catch (e: any) {
-      setDriveStatus(`Ralat sambungan Drive: ${e.message}`);
-    } finally {
-      setLoadingDrive(false);
-    }
-  };
-
-  // Google Calendar REST API List
-  const fetchCalendarEvents = async () => {
-    if (!oauthAccessToken) return;
-    setLoadingCal(true);
-    setCalStatus("");
-    try {
-      const res = await fetch(
-        "https://www.googleapis.com/calendar/v3/calendars/primary/events?orderBy=startTime&singleEvents=true&timeMin=" +
-          new Date().toISOString() +
-          "&maxResults=5",
-        {
-          headers: { Authorization: `Bearer ${oauthAccessToken}` },
-        },
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setCalendarEvents(data.items || []);
-      } else {
-        const err = await res.json();
-        setCalStatus(
-          `Gagal memuat kalendar: ${err.error?.message || "Ralat tidak diketahui"}`,
-        );
-      }
-    } catch (e: any) {
-      setCalStatus(`Ralat sambungan Kalendar: ${e.message}`);
-    } finally {
-      setLoadingCal(false);
-    }
-  };
-
-  // Create Google Calendar event with Google Meet Option
-  const handleCreateEvent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!oauthAccessToken) return;
-    setCalStatus("");
-    try {
-      const startDateTime = `${eventDate}T${eventStartTime}:00`;
-      const endDateTime = `${eventDate}T${eventEndTime}:00`;
-
-      const timeZone =
-        Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kuala_Lumpur";
-
-      const eventPayload: any = {
-        summary: eventTitle,
-        description: eventDesc,
-        start: { dateTime: startDateTime, timeZone },
-        end: { dateTime: endDateTime, timeZone },
-      };
-
-      if (withMeet) {
-        eventPayload.conferenceData = {
-          createRequest: {
-            requestId: `meet-${Date.now()}`,
-            conferenceSolutionKey: { type: "hangoutsMeet" },
-          },
-        };
-      }
-
-      const res = await fetch(
-        "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${oauthAccessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(eventPayload),
-        },
-      );
-
-      if (res.ok) {
-        setCalStatus(
-          "Berjaya menjadualkan sesi perjumpaan dalam Google Calendar!",
-        );
-        fetchCalendarEvents();
-      } else {
-        const err = await res.json();
-        setCalStatus(
-          `Ralat memasukkan jadual: ${err.error?.message || "Ralat tidak diketahui"}`,
-        );
-      }
-    } catch (e: any) {
-      setCalStatus(`Ralat Calendar: ${e.message}`);
-    }
-  };
-
-  // Gmail REST API Send (Standard raw RFC 2822 payload for REST gateway)
-  const handleSendMail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!oauthAccessToken) return;
-    setSendingMail(true);
-    setMailStatus("");
-
-    try {
-      // Build proper base64 RFC 2822 email payload
-      const mailString = [
-        `To: ${mailTo}`,
-        `Subject: ${mailSubject}`,
-        "Content-Type: text/plain; charset=UTF-8",
-        "",
-        mailBody,
-      ].join("\n");
-
-      // Encode base64url standard safe
-      const encodedMail = btoa(unescape(encodeURIComponent(mailString)))
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/, "");
-
-      const res = await fetch(
-        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${oauthAccessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ raw: encodedMail }),
-        },
-      );
-
-      if (res.ok) {
-        setMailStatus(
-          "E-mel berdaftar berjaya di hantar keluar menggunakan Gerbang Gmail!",
-        );
-        setMailTo("admin@bfgplt.com");
-      } else {
-        const err = await res.json();
-        setMailStatus(
-          `Gagal menghantar e-mel: ${err.error?.message || "Ralat"}`,
-        );
-      }
-    } catch (err: any) {
-      setMailStatus(`Ralat menghantar emel: ${err.message}`);
-    } finally {
-      setSendingMail(false);
-    }
-  };
-
-  // Fetch Google Chat spaces dynamically
-  useEffect(() => {
-    if (oauthAccessToken && activeSubTab === "chat") {
-      fetchChatSpaces();
-    }
-  }, [oauthAccessToken, activeSubTab]);
-
-  const fetchChatSpaces = async () => {
-    if (!oauthAccessToken) return;
-    setLoadingChat(true);
-    setChatStatus("");
-    try {
-      const res = await fetch("https://chat.googleapis.com/v1/spaces", {
-        headers: { Authorization: `Bearer ${oauthAccessToken}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const spaces = data.spaces || [];
-        setChatSpaces(spaces);
-        if (spaces.length > 0) {
-          setSelectedSpace(spaces[0].name);
-        }
-      } else {
-        const err = await res.json();
-        setChatStatus(
-          `Gagal memuat Google Chat Spaces: ${err.error?.message || "Ralat tidak diketahui"}`,
-        );
-      }
-    } catch (e: any) {
-      setChatStatus(`Ralat sambungan Google Chat: ${e.message}`);
-    } finally {
-      setLoadingChat(false);
-    }
-  };
-
-  const handleSendChatMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!oauthAccessToken || !selectedSpace) {
-      setChatStatus(
-        "Sila sambung Google & pilih ruang sembang terlebih dahulu.",
-      );
-      return;
-    }
-    setSendingChat(true);
-    setChatStatus("");
-    try {
-      const res = await fetch(
-        `https://chat.googleapis.com/v1/${selectedSpace}/messages`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${oauthAccessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ text: chatMessageText }),
-        },
-      );
-      if (res.ok) {
-        setChatStatus("Mesej berjaya dihantar ke dalam Google Chat Space!");
-        setChatMessageText("");
-      } else {
-        const err = await res.json();
-        setChatStatus(
-          `Gagal menghantar mesej Google Chat: ${err.error?.message || "Ralat"}`,
-        );
-      }
-    } catch (e: any) {
-      setChatStatus(`Ralat Google Chat: ${e.message}`);
-    } finally {
-      setSendingChat(false);
-    }
+  const onSelectTab = (tabId: string) => {
+    handleTabChange(tabId);
+    setIsMobileMenuOpen(false);
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-3xl p-6 lg:p-8 space-y-6">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between border-b pb-4 gap-4">
-        <div>
-          <h3 className="font-heading font-extrabold text-[#0F172A] text-lg uppercase tracking-wider">
-            Pusat Integrasi Google Workspace
-          </h3>
-          <p className="text-xs text-slate-500 mt-1">
-            Uruskan database Google Sheet, aset Drive, Gmail rasmi syarikat,
-            borang, dan mesyuarat Meet secara langsung.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {oauthAccessToken ? (
-            <div className="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs px-3 py-1.5 rounded-full border border-green-100 font-extrabold uppercase">
-              <span className="w-2 h-2 rounded-full bg-green-600 block"></span>
-              <span>Akaun Google Disambung</span>
-            </div>
-          ) : (
-            <button
-              onClick={onGoogleSignIn}
-              className="flex items-center gap-2 bg-[#0F172A] text-white hover:bg-slate-800 text-xs font-bold uppercase px-4 py-2 bg-[#0F172A] rounded-xl transition"
+    <div className="w-full relative z-40 select-none">
+      {/* 1. TOP ANNOUNCEMENT BAR (Desktop & Tablet) */}
+      <div className="bg-[#0F172A] text-slate-300 text-[11px] py-1.5 border-b border-slate-800/90 hidden sm:block">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+          <div className="flex items-center gap-5">
+            <a
+              href={`tel:${companyInfo.phone}`}
+              className="flex items-center gap-1.5 text-slate-300 hover:text-[#D4AF37] transition font-medium"
             >
-              <LogIn className="w-3.5 h-3.5 text-[#D4AF37]" strokeWidth={3} />
-              <span>Sambung Akaun Google</span>
-            </button>
-          )}
+              <Phone className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>{companyInfo.phone}</span>
+            </a>
+            <a
+              href={`mailto:${companyInfo.email}`}
+              className="hidden md:flex items-center gap-1.5 text-slate-300 hover:text-[#D4AF37] transition font-medium"
+            >
+              <Mail className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>{companyInfo.email}</span>
+            </a>
+            <span className="hidden xl:flex items-center gap-1.5 text-amber-300/90 font-semibold bg-slate-800/90 px-2.5 py-0.5 rounded-full border border-slate-700">
+              <MapPin className="w-3 h-3 text-[#D4AF37]" />
+              <span>Kuantan, Pekan & Seluruh Pahang</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <a
+              href="https://benaflash.bukku.store"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-[#D4AF37] hover:text-amber-200 font-extrabold uppercase tracking-wider transition-colors"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>BFG E-Store Bukku</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+
+            <div className="h-3.5 w-px bg-slate-800 hidden sm:block" />
+
+            {/* Language Switcher Pill */}
+            <div className="flex items-center gap-1 bg-slate-800/90 p-0.5 rounded-lg border border-slate-700">
+              <button
+                onClick={() => setLang("MS")}
+                className={`px-2 py-0.5 rounded text-[10px] font-black uppercase transition-all cursor-pointer ${
+                  lang === "MS"
+                    ? "bg-[#D4AF37] text-slate-950 font-bold shadow-xs"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                MS
+              </button>
+              <button
+                onClick={() => setLang("EN")}
+                className={`px-2 py-0.5 rounded text-[10px] font-black uppercase transition-all cursor-pointer ${
+                  lang === "EN"
+                    ? "bg-[#D4AF37] text-slate-950 font-bold shadow-xs"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                EN
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* HORIZONTAL HUB TAB SELECTOR */}
-      <div className="flex flex-wrap items-center gap-1.5 border-b pb-2 select-none">
-        {[
-          { id: "docs", icon: Type, label: "Docs" },
-          { id: "slides", icon: MonitorPlay, label: "Slides" },
-          { id: "drive", icon: HardDrive, label: "Drive" },
-          { id: "gmail", icon: Mail, label: "Gmail" },
-          { id: "chat", icon: MessageSquare, label: "Chat" },
-          { id: "calendar", icon: Calendar, label: "Calendar" },
-          { id: "tasks", icon: ListTodo, label: "Tasks" },
-          { id: "forms", icon: Settings, label: "Forms" },
-          { id: "keep", icon: StickyNote, label: "Keep" },
-          { id: "contacts", icon: Users, label: "Contacts" },
-          { id: "picker", icon: MousePointer2, label: "Picker" },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveSubTab(tab.id as any)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-              activeSubTab === tab.id
-                ? "bg-slate-100 text-slate-900 font-extrabold"
-                : "text-slate-500 hover:bg-slate-50"
-            }`}
+      {/* 2. COMPACT FIXED HEADER BAR */}
+      <header
+        id="main-navigation"
+        className={`sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800 flex items-center transition-all duration-300 ${
+          isScrolled ? "h-16 shadow-lg shadow-slate-900/5" : "h-20 shadow-md"
+        }`}
+      >
+        {/* Progress Bar during page loading/transition */}
+        {(isPageTransitioning || isLoading) && (
+          <motion.div
+            initial={{ width: "0%" }}
+            animate={{ width: "100%" }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#D4AF37] via-amber-300 to-[#0F172A] shadow-sm z-50"
+          />
+        )}
+
+        <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+          {/* Brand Logo & Title */}
+          <div
+            className="flex items-center gap-3 cursor-pointer group shrink-0"
+            onClick={() => onSelectTab("home")}
           >
-            <tab.icon className="w-4 h-4 text-slate-600" />
-            <span>{tab.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* RENDER ACTIVE INTEGRATION PANEL */}
-      <div className="space-y-4">
-        {/* DRIVE & PICKER PANEL */}
-        {activeSubTab === "drive" && (
-          <div className="space-y-4">
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-150 space-y-2">
-              <h4 className="font-extrabold text-[#0F172A] text-xs uppercase tracking-wider flex items-center gap-1.5">
-                <HardDrive className="w-4 h-4 text-sky-600" />
-                Paparan Aset & Pembaca Fail Drive
-              </h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Uruskan fail korporat pemaju JKR, tender, penyaman udara, dan
-                sebut harga langsung dari storan awan Google Drive anda.
+            <div className="w-auto h-11 sm:h-12 flex items-center justify-center rounded transition-transform scale-100 group-hover:scale-105">
+              <img
+                src="https://i.ibb.co/6c1Xgxr4/BENA.png"
+                alt="Bena Flash Global Logo"
+                className="h-full w-auto object-contain"
+                width="120"
+                height="48"
+              />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-[#0F172A] dark:text-white font-heading group-hover:text-[#D4AF37] transition-colors leading-tight">
+                  {companyInfo.name}
+                </h1>
+                <span className="hidden sm:inline-block bg-[#0F172A] text-[#D4AF37] text-[9px] font-black uppercase px-1.5 py-0.5 rounded border border-[#D4AF37]/30">
+                  CIDB G2
+                </span>
+              </div>
+              <p className="text-[9px] uppercase tracking-[0.18em] font-extrabold text-slate-400 dark:text-slate-400">
+                M&E Engineering • Aircond • Solar
               </p>
             </div>
-
-            {!oauthAccessToken ? (
-              <div className="text-center p-8 bg-slate-50 border border-dashed rounded-3xl space-y-3">
-                <p className="text-xs text-slate-400 italic">
-                  Sambung akaun Google anda terlebih dahulu untuk melayari fail
-                  korporat anda di Google Drive.
-                </p>
-                <button
-                  onClick={onGoogleSignIn}
-                  className="bg-[#0F172A] text-[#D4AF37] px-4 py-2 rounded-xl text-xs font-bold uppercase transition hover:bg-slate-800"
-                >
-                  Sambung Drive Sekarang
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <span className="text-xs font-bold text-slate-700">
-                    Senarai Fail Terkini
-                  </span>
-                  <button
-                    onClick={fetchDriveFiles}
-                    className="p-1 rounded hover:bg-slate-100 text-slate-500 transition"
-                  >
-                    <RefreshCw
-                      className={`w-4 h-4 ${loadingDrive ? "animate-spin" : ""}`}
-                    />
-                  </button>
-                </div>
-
-                {driveStatus && (
-                  <div className="p-3 bg-red-50 border border-red-100 rounded text-red-700 text-xs font-bold">
-                    {driveStatus}
-                  </div>
-                )}
-
-                {loadingDrive ? (
-                  <div className="py-12 flex justify-center items-center">
-                    <div className="w-6 h-6 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {driveFiles.map((file) => (
-                      <div
-                        key={file.id}
-                        className="p-3.5 bg-white border border-slate-200 rounded-2xl flex gap-3 items-center shadow-3xs hover:border-[#D4AF37] transition"
-                      >
-                        <img
-                          src={file.iconLink}
-                          alt=""
-                          className="w-6 h-6 shrink-0"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-slate-800 truncate">
-                            {file.name}
-                          </p>
-                          <span className="text-[9px] text-slate-400 block truncate">
-                            {file.mimeType}
-                          </span>
-                        </div>
-                        <a
-                          href={file.webViewLink}
-                          target="_blank"
-                          referrerPolicy="no-referrer"
-                          rel="noopener noreferrer"
-                          className="p-1.5 bg-slate-50 text-slate-600 hover:text-[#D4AF37] hover:bg-amber-50 rounded-lg transition"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
-                    ))}
-                    {driveFiles.length === 0 && (
-                      <div className="col-span-full py-8 text-center text-xs text-slate-400 italic">
-                        Tiada fail dijumpai di Google Drive. Sila muat naik
-                        tender atau sijil syarikat.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
-        )}
 
-        {/* GMAIL PANEL */}
-        {activeSubTab === "gmail" && (
-          <div className="space-y-4">
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-150 space-y-2">
-              <h4 className="font-extrabold text-[#0F172A] text-xs uppercase tracking-wider flex items-center gap-1.5">
-                <Mail className="w-4 h-4 text-red-600" />
-                Gerbang E-mel Korporat Gmail
-              </h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Hantar emel jawapan sebut harga dan pautan perjumpaan terus
-                kepada pelanggan rasmi syarikat di bawah domain rasmi syarikat{" "}
-                <strong>admin@bfgplt.com</strong>.
-              </p>
-            </div>
+          {/* Active Tab Indicator Badge in Header (Clean status display) */}
+          <div className="hidden lg:flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+              {navigationItems.find((n) => n.id === activeTab)?.label || "Utama"}
+            </span>
+          </div>
 
-            {!oauthAccessToken ? (
-              <div className="text-center p-8 bg-slate-50 border border-dashed rounded-3xl space-y-3">
-                <p className="text-xs text-slate-400 italic">
-                  Sambung akaun Gmail untuk menghantar mesej keluar.
-                </p>
-                <button
-                  onClick={onGoogleSignIn}
-                  className="bg-[#0F172A] text-[#D4AF37] px-4 py-2 rounded-xl text-xs font-bold uppercase transition hover:bg-slate-800"
-                >
-                  Sambung Gmail
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSendMail} className="space-y-3 max-w-xl">
-                {mailStatus && (
-                  <div className="p-3 bg-indigo-50 border border-indigo-100 text-indigo-800 rounded font-bold text-xs">
-                    {mailStatus}
-                  </div>
-                )}
+          {/* Right Action Controls + SIDE HEADER MENU BUTTON */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Quick Sebut Harga CTA */}
+            <button
+              onClick={() => onSelectTab("contact")}
+              className="hidden sm:flex items-center gap-1.5 bg-gradient-to-r from-[#D4AF37] to-amber-400 hover:from-amber-400 hover:to-[#D4AF37] text-slate-950 text-xs font-black uppercase tracking-wider px-3.5 py-2 rounded-xl transition shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
+            >
+              <Zap className="w-3.5 h-3.5 fill-slate-950" />
+              <span>Sebut Harga</span>
+            </button>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                      E-mel Penerima
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={mailTo}
-                      onChange={(e) => setMailTo(e.target.value)}
-                      className="w-full text-xs p-2.5 border border-slate-300 rounded focus:outline-none focus:border-[#D4AF37]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                      Subjek E-mel
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={mailSubject}
-                      onChange={(e) => setMailSubject(e.target.value)}
-                      className="w-full text-xs p-2.5 border border-slate-300 rounded focus:outline-none focus:border-[#D4AF37]"
-                    />
-                  </div>
-                </div>
+            {/* Theme Switcher */}
+            <button
+              onClick={toggleTheme}
+              className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer flex items-center justify-center shadow-2xs"
+              title={theme === "light" ? "Mod Gelap" : "Mod Terang"}
+            >
+              {theme === "light" ? (
+                <Moon className="w-4 h-4 text-slate-700" />
+              ) : (
+                <Sun className="w-4 h-4 text-amber-400" />
+              )}
+            </button>
 
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                    Kandungan Mesej
-                  </label>
-                  <textarea
-                    required
-                    value={mailBody}
-                    onChange={(e) => setMailBody(e.target.value)}
-                    rows={4}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded focus:outline-none focus:border-[#D4AF37]"
+            {/* Admin CMS Gate Button */}
+            <button
+              onClick={() => {
+                setIsAdminMode(true);
+                onSelectTab("admin");
+              }}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-[11px] sm:text-xs font-extrabold uppercase tracking-wider transition-all duration-200 shadow-xs cursor-pointer ${
+                isLoggedIn && isAdminMode
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  : "bg-[#0F172A] hover:bg-slate-800 text-[#D4AF37] border border-[#D4AF37]/50"
+              }`}
+              title="Akses Portal Login Admin BFG"
+            >
+              {isLoggedIn ? (
+                <Unlock className="w-3.5 h-3.5 text-[#D4AF37]" />
+              ) : (
+                <Lock className="w-3.5 h-3.5 text-[#D4AF37]" />
+              )}
+              <span>{isLoggedIn ? "CMS" : "Admin"}</span>
+            </button>
+
+            {/* PROMINENT SIDE HEADER MENU TRIGGER BUTTON (FOR ALL VIEWS: Desktop, Tablet, Mobile) */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="flex items-center gap-2 bg-[#0F172A] hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#D4AF37] border border-[#D4AF37]/50 px-3.5 py-2 rounded-xl shadow-md transition-all cursor-pointer font-black text-xs uppercase tracking-wider"
+              aria-label="Open Side Header Menu"
+            >
+              <Menu className="w-4 h-4 text-[#D4AF37]" />
+              <span className="hidden sm:inline">MENU SIDE</span>
+            </motion.button>
+          </div>
+        </div>
+      </header>
+
+      {/* 3. PREMIUM SIDE HEADER DRAWER (SLIDE-OVER FROM RIGHT FOR DESKTOP, TABLET & MOBILE) */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            {/* Backdrop Blur Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 cursor-pointer"
+            />
+
+            {/* Slide-over Side Drawer Container */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 280 }}
+              className="fixed top-0 right-0 bottom-0 w-full sm:w-[420px] bg-slate-900 text-white z-50 shadow-2xl flex flex-col justify-between border-l border-slate-800 overflow-y-auto"
+            >
+              {/* Drawer Top Header */}
+              <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/80 sticky top-0 z-10 backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                  <img
+                    src="https://i.ibb.co/6c1Xgxr4/BENA.png"
+                    alt="Bena Flash Global Logo"
+                    className="h-10 w-auto object-contain"
                   />
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white font-heading">
+                      Bena Flash Global PLT
+                    </h3>
+                    <p className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-wider">
+                      M&E CIDB G2 • Kuantan / Pekan
+                    </p>
+                  </div>
                 </div>
 
+                {/* Close Button */}
                 <button
-                  type="submit"
-                  disabled={sendingMail}
-                  className="bg-[#0F172A] hover:bg-slate-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs uppercase"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer border border-slate-700"
+                  aria-label="Close Menu"
                 >
-                  {sendingMail ? "Menghantar..." : "Hantar E-mel Keluar"}
+                  <X className="w-5 h-5" />
                 </button>
-              </form>
-            )}
-          </div>
-        )}
-
-        {/* CALENDAR PANEL */}
-        {activeSubTab === "calendar" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-150 space-y-2">
-                <h4 className="font-extrabold text-[#0F172A] text-xs uppercase tracking-wider flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-emerald-600" />
-                  Jadual Kerja & Google Meet Generator
-                </h4>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Tambahkan sesi perjumpaan sebut harga, perbincangan tender
-                  elektrikal, atau pemeriksaan pendingin hawa terus di Google
-                  Calendar dengan pautan Meet.
-                </p>
               </div>
 
-              {!oauthAccessToken ? (
-                <div className="text-center p-8 bg-slate-50 border border-dashed rounded-3xl space-y-3">
-                  <p className="text-xs text-slate-400 italic">
-                    Sambung ke Google Calendar untuk mengurus perjumpaan
-                    syarikat.
+              {/* Drawer Content Body */}
+              <div className="p-6 space-y-6 flex-1">
+                {/* Search / Quick Sebut Harga Card */}
+                <div className="bg-gradient-to-br from-slate-950 to-slate-900 border border-[#D4AF37]/30 rounded-2xl p-4 space-y-3 shadow-inner">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-black tracking-widest text-[#D4AF37]">
+                      Permohonan Pantas
+                    </span>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      Respon 24 jam
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Dapatkan sebut harga rasmi projek M&E, pemasangan Aircond VRV/Chiller, dan Solar PV.
                   </p>
                   <button
-                    onClick={onGoogleSignIn}
-                    className="bg-[#0F172A] text-[#D4AF37] px-4 py-2 rounded-xl text-xs font-bold uppercase transition hover:bg-slate-800"
+                    onClick={() => onSelectTab("contact")}
+                    className="w-full bg-[#D4AF37] hover:bg-amber-400 text-slate-950 text-xs font-black uppercase py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
                   >
-                    Sambung Kalendar
+                    <Zap className="w-4 h-4 fill-slate-950" />
+                    <span>Dapatkan Sebut Harga Projek</span>
                   </button>
                 </div>
-              ) : (
-                <form onSubmit={handleCreateEvent} className="space-y-3">
-                  {calStatus && (
-                    <div className="p-3 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded font-bold text-xs">
-                      {calStatus}
-                    </div>
-                  )}
 
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                      Tajuk Aktiviti Tapak / Mesyuarat
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={eventTitle}
-                      onChange={(e) => setEventTitle(e.target.value)}
-                      className="w-full text-xs p-2.5 border border-slate-300 rounded focus:outline-none focus:border-[#D4AF37]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                      Penerangan Sesi
-                    </label>
-                    <textarea
-                      required
-                      value={eventDesc}
-                      onChange={(e) => setEventDesc(e.target.value)}
-                      rows={2}
-                      className="w-full text-xs p-2.5 border border-slate-300 rounded focus:outline-none focus:border-[#D4AF37]"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                        Tarikh
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={eventDate}
-                        onChange={(e) => setEventDate(e.target.value)}
-                        className="w-full text-xs p-2 border border-slate-300 rounded focus:outline-none focus:border-[#D4AF37]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                        Mula
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={eventStartTime}
-                        onChange={(e) => setEventStartTime(e.target.value)}
-                        placeholder="10:00"
-                        className="w-full text-xs p-2 border border-slate-300 rounded focus:outline-none focus:border-[#D4AF37]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                        Tamat
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={eventEndTime}
-                        onChange={(e) => setEventEndTime(e.target.value)}
-                        placeholder="11:30"
-                        className="w-full text-xs p-2 border border-slate-300 rounded focus:outline-none focus:border-[#D4AF37]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-1.5 select-none">
-                    <input
-                      type="checkbox"
-                      id="googleMeetCheckbox"
-                      checked={withMeet}
-                      onChange={(e) => setWithMeet(e.target.checked)}
-                      className="rounded text-[#D4AF37] focus:ring-[#D4AF37]"
-                    />
-                    <label
-                      htmlFor="googleMeetCheckbox"
-                      className="text-xs font-semibold text-slate-700 flex items-center gap-1"
-                    >
-                      <Video className="w-3.5 h-3.5 text-blue-600" />
-                      <span>
-                        Sertakan Pautan Mesyuarat Google Meet Secara Automatik
-                      </span>
-                    </label>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="bg-[#0F172A] hover:bg-slate-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs uppercase"
-                  >
-                    Jadualkan Mesyuarat
-                  </button>
-                </form>
-              )}
-            </div>
-
-            {/* List upcoming events */}
-            <div className="space-y-3">
-              <span className="text-xs font-bold text-slate-700 block border-b pb-1.5 uppercase tracking-wider">
-                Jadual Korporat Terkini
-              </span>
-              {loadingCal ? (
-                <div className="py-12 flex justify-center items-center">
-                  <div className="w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {calendarEvents.map((ev) => (
-                    <div
-                      key={ev.id}
-                      className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col gap-1 text-slate-800 font-sans shadow-3xs"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="font-bold text-xs text-slate-800 truncate">
-                          {ev.summary}
+                {/* Categorized Navigation Links */}
+                <div className="space-y-5">
+                  {categories.map((cat) => {
+                    const catItems = navigationItems.filter((item) => item.category === cat);
+                    return (
+                      <div key={cat} className="space-y-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1 block">
+                          {cat}
                         </span>
-                        <span className="text-[9px] bg-emerald-50 text-emerald-800 border border-emerald-100 font-extrabold px-1.5 py-0.5 rounded uppercase">
-                          Kalendar
-                        </span>
+                        <div className="space-y-1">
+                          {catItems.map((item) => {
+                            const IconComponent = item.icon;
+                            const isActive = activeTab === item.id && !isAdminMode;
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => onSelectTab(item.id)}
+                                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-between group cursor-pointer ${
+                                  isActive
+                                    ? "bg-[#D4AF37] text-slate-950 font-black shadow-md"
+                                    : "bg-slate-950/60 text-slate-200 hover:bg-slate-800 hover:text-white border border-slate-800/80"
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <IconComponent
+                                    className={`w-4 h-4 ${
+                                      isActive ? "text-slate-950" : "text-[#D4AF37] group-hover:scale-110 transition-transform"
+                                    }`}
+                                  />
+                                  <span>{item.label}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {item.badge && (
+                                    <span
+                                      className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
+                                        isActive
+                                          ? "bg-slate-950 text-[#D4AF37]"
+                                          : "bg-slate-800 text-amber-300 border border-amber-500/30"
+                                      }`}
+                                    >
+                                      {item.badge}
+                                    </span>
+                                  )}
+                                  <ChevronRight
+                                    className={`w-4 h-4 opacity-50 ${
+                                      isActive ? "text-slate-950" : "text-slate-400 group-hover:translate-x-1 transition-transform"
+                                    }`}
+                                  />
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                      <p className="text-[10px] text-slate-500 leading-relaxed truncate">
-                        {ev.description || "Tiada penerangan dimasukkan."}
-                      </p>
-
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2 font-mono pt-1.5 border-t border-slate-100">
-                        <span>
-                          {ev.start?.dateTime
-                            ? new Date(ev.start.dateTime).toLocaleString(
-                                "ms-MY",
-                              )
-                            : ev.start?.date || ""}
-                        </span>
-                        {ev.hangoutLink && (
-                          <a
-                            href={ev.hangoutLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-blue-50 hover:bg-blue-100 border border-blue-150 rounded px-2 py-0.5 text-blue-700 font-sans font-bold flex items-center gap-1 transition shrink-0"
-                          >
-                            <Video className="w-3 h-3 text-blue-600" />
-                            <span>Sertai Meet</span>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {oauthAccessToken && calendarEvents.length === 0 && (
-                    <div className="py-8 text-center text-xs text-slate-400 italic">
-                      Tiada janji temu atau sesi tapak dijumpai dalam kalendar
-                      utama anda. Jadualkan baru di sebelah kiri.
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
 
-      {["docs", "slides", "forms"].includes(activeSubTab) && (
-        <div className="space-y-4">
-          <h4 className="font-extrabold text-[#0F172A] text-xs uppercase tracking-wider">
-            Senarai Fail {activeSubTab}
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {(activeSubTab === "docs"
-              ? docsFiles
-              : activeSubTab === "slides"
-                ? slidesFiles
-                : formsFiles
-            ).map((f) => (
-              <a
-                key={f.id}
-                href={f.webViewLink}
-                target="_blank"
-                rel="noreferrer"
-                className="p-3 bg-white border rounded shadow-sm hover:border-slate-400 text-xs text-blue-600 truncate block"
-              >
-                {f.name}
-              </a>
-            ))}
-          </div>
-          {(activeSubTab === "docs"
-            ? docsFiles
-            : activeSubTab === "slides"
-              ? slidesFiles
-              : formsFiles
-          ).length === 0 &&
-            oauthAccessToken && (
-              <p className="text-xs text-slate-500">Tiada fail dijumpai.</p>
-            )}
-        </div>
-      )}
-
-      {activeSubTab === "tasks" && (
-        <div className="space-y-4">
-          <h4 className="font-extrabold text-[#0F172A] text-xs uppercase tracking-wider">
-            Google Tasks Lists
-          </h4>
-          <ul className="list-disc pl-5 text-sm text-slate-700">
-            {tasksLists.map((t) => (
-              <li key={t.id}>{t.title}</li>
-            ))}
-          </ul>
-          {tasksLists.length === 0 && oauthAccessToken && (
-            <p className="text-xs text-slate-500">
-              Tiada senarai tugas dijumpai.
-            </p>
-          )}
-        </div>
-      )}
-
-      {activeSubTab === "contacts" && (
-        <div className="space-y-4">
-          <h4 className="font-extrabold text-[#0F172A] text-xs uppercase tracking-wider">
-            Google Contacts
-          </h4>
-          <div className="grid grid-cols-2 gap-3">
-            {contacts.map((c, i) => (
-              <div key={i} className="p-3 border rounded text-xs bg-slate-50">
-                <p className="font-bold">{c.names?.[0]?.displayName}</p>
-                <p className="text-slate-500">{c.emailAddresses?.[0]?.value}</p>
+                {/* Additional Quick Action Portals */}
+                <div className="pt-4 border-t border-slate-800 space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1 block">
+                    Pautan Pantas E-Commerce & Portal
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <a
+                      href="https://benaflash.bukku.store"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-amber-300 text-[11px] font-extrabold px-3 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5 text-[#D4AF37]" />
+                      <span>BFG Bukku Store</span>
+                    </a>
+                    <button
+                      onClick={() => {
+                        setShowInstallModal(true);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-[11px] font-extrabold px-3 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Smartphone className="w-3.5 h-3.5 text-[#D4AF37]" />
+                      <span>Muat Turun App</span>
+                    </button>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
-          {contacts.length === 0 && oauthAccessToken && (
-            <p className="text-xs text-slate-500">Tiada kenalan dijumpai.</p>
-          )}
-        </div>
-      )}
 
-      {activeSubTab === "keep" && (
-        <div className="space-y-4">
-          <h4 className="font-extrabold text-[#0F172A] text-xs uppercase tracking-wider">
-            Google Keep
-          </h4>
-          <p className="text-xs text-slate-600 border border-slate-200 p-4 rounded bg-slate-50 italic">
-            Sambungan Google Keep API berjaya disediakan secara lalai. Modul
-            pembaca nota Google Keep akan diaktifkan di dalam versi seterusnya.
-          </p>
-        </div>
-      )}
+              {/* Drawer Footer Details */}
+              <div className="p-6 border-t border-slate-800 bg-slate-950 space-y-4">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-[#D4AF37]" />
+                    <span>Bahasa Sistem:</span>
+                  </div>
+                  <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800">
+                    <button
+                      onClick={() => setLang("MS")}
+                      className={`px-3 py-1 rounded text-[10px] font-black uppercase cursor-pointer ${
+                        lang === "MS" ? "bg-[#D4AF37] text-slate-950" : "text-slate-400"
+                      }`}
+                    >
+                      BM
+                    </button>
+                    <button
+                      onClick={() => setLang("EN")}
+                      className={`px-3 py-1 rounded text-[10px] font-black uppercase cursor-pointer ${
+                        lang === "EN" ? "bg-[#D4AF37] text-slate-950" : "text-slate-400"
+                      }`}
+                    >
+                      EN
+                    </button>
+                  </div>
+                </div>
 
-      {activeSubTab === "picker" && (
-        <div className="space-y-4">
-          <h4 className="font-extrabold text-[#0F172A] text-xs uppercase tracking-wider">
-            Google Picker Alternative
-          </h4>
-          <p className="text-xs text-slate-600 bg-red-50 p-3 rounded border border-red-100 text-red-800">
-            Google Picker API memerlukan konfigurasi Developer Key tambahan.
-            Sebagai alternatif, sila pautkan atau tampal URL fail secara manual:
-          </p>
-          <input
-            type="text"
-            value={pickerUrl}
-            onChange={(e) => setPickerUrl(e.target.value)}
-            placeholder="Tampal Pautan Fail di sini..."
-            className="w-full text-xs p-3 border rounded"
-          />
-          {pickerUrl && (
-            <a
-              href={pickerUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-blue-600 underline"
-            >
-              Buka Pautan
-            </a>
-          )}
-        </div>
-      )}
+                <button
+                  onClick={() => {
+                    setIsAdminMode(true);
+                    onSelectTab("admin");
+                  }}
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 text-xs font-bold uppercase py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Lock className="w-4 h-4 text-[#D4AF37]" />
+                  <span>{isLoggedIn ? "Akses Portal CMS Admin" : "Log Masuk Admin BFG"}</span>
+                </button>
+
+                <p className="text-[10px] text-slate-500 text-center font-mono">
+                  © 2026 BENA FLASH GLOBAL PLT (LLP0009823-LGN)
+                </p>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
-}
+};
+

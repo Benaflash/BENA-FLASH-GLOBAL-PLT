@@ -1,742 +1,660 @@
-import React from "react";
-import { motion } from "motion/react";
-import { Project, LeadQuote, Career, Blog, Application } from "../types";
+import React, { useState } from "react";
+import { Certification } from "../types";
 import {
-  Briefcase,
-  Users,
-  FileText,
-  Mail,
-  Cpu,
-  BarChart2,
-  Calendar,
-  Clock,
-  UserCheck,
-  ShieldAlert,
-  Layers,
+  Plus,
+  Trash2,
+  Edit2,
+  Check,
+  X,
+  Award,
+  Save,
+  Clipboard,
 } from "lucide-react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Legend,
-  AreaChart,
-  Area,
-  Cell,
-} from "recharts";
 
-// Safe date parser to handle both DD/MM/YYYY and YYYY-MM-DD or ISO formats
-const parseDateString = (dateStr: string) => {
-  if (!dateStr) return null;
-  if (dateStr.includes("/")) {
-    const parts = dateStr.split("/");
-    if (parts.length === 3) {
-      const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1; // 0-indexed
-      const year = parseInt(parts[2], 10);
-      return new Date(year, month, day);
-    }
-  }
-  const d = new Date(dateStr);
-  if (!isNaN(d.getTime())) {
-    return d;
-  }
-  return null;
-};
-
-interface AnalyticsProps {
-  projects: Project[];
-  leads: LeadQuote[];
-  careers: Career[];
-  blogs: Blog[];
-  applications: Application[];
-  activityLogs?: any[]; // optional activity logs array
-  isLoading?: boolean;
+interface CertificationManageProps {
+  certifications: Certification[];
+  onSave: (updated: Certification[]) => void;
 }
 
-export default function AnalyticsDash({
-  projects,
-  leads,
-  careers,
-  blogs,
-  applications,
-  activityLogs = [],
-  isLoading = false,
-}: AnalyticsProps) {
-  // Calculate basic stats
-  const totalProjects = projects.length;
-  const completedProjects = projects.filter((p) => p.status === "Completed").length;
-  const inProgressProjects = projects.filter((p) => p.status === "In Progress").length;
-  const totalLeads = leads.length;
-  const newLeads = leads.filter((L) => L.status === "New").length;
-  const totalCareers = careers.length;
-  const totalApps = applications.length;
+export default function CertificationManage({
+  certifications,
+  onSave,
+}: CertificationManageProps) {
+  const [editingCertId, setEditingCertId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Certification>>({});
+  const [newCertForm, setNewCertForm] = useState<Partial<Certification>>({
+    name: "",
+    issuingBody: "",
+    logoText: "",
+    description: "",
+    registrationNo: "",
+    validity: "",
+    specialties: [],
+    imageUrl: "",
+    pdfUrl: "",
+  });
+  const [showAddForm, setShowAddForm] = useState(false);
 
-  // 1. Process daily bookings (last 7 days)
-  const getDailyStats = () => {
-    const dailyMap: Record<string, number> = {};
-    const last7Days = Array.from({ length: 7 })
-      .map((_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        return d;
-      })
-      .reverse();
+  // Bullets lists helpers
+  const [editSpecialtiesText, setEditSpecialtiesText] = useState("");
+  const [newSpecialtiesText, setNewSpecialtiesText] = useState("");
 
-    // Init map
-    last7Days.forEach((d) => {
-      const key = d.toLocaleDateString("ms-MY", { day: "numeric", month: "short" });
-      dailyMap[key] = 0;
-    });
-
-    leads.forEach((lead) => {
-      const parsed = parseDateString(lead.date);
-      if (parsed) {
-        const key = parsed.toLocaleDateString("ms-MY", { day: "numeric", month: "short" });
-        if (key in dailyMap) {
-          dailyMap[key]++;
-        }
-      }
-    });
-
-    return Object.entries(dailyMap).map(([date, count]) => ({
-      date,
-      "Tempahan": count,
-    }));
+  const handleStartEdit = (cert: Certification) => {
+    setEditingCertId(cert.id);
+    setEditForm(cert);
+    setEditSpecialtiesText((cert.specialties || []).join("\n"));
   };
 
-  // 2. Process monthly incoming leads and service demand trends
-  const getMonthlyStats = () => {
-    const months = [
-      "Jan", "Feb", "Mac", "Apr", "Mei", "Jun",
-      "Jul", "Ogos", "Sep", "Okt", "Nov", "Dis"
-    ];
-
-    const monthlyMap: Record<string, {
-      total: number;
-      aircond: number;
-      electrical: number;
-      solar: number;
-      testing: number;
-    }> = {};
-
-    months.forEach((m) => {
-      monthlyMap[m] = { total: 0, aircond: 0, electrical: 0, solar: 0, testing: 0 };
-    });
-
-    leads.forEach((lead) => {
-      const parsed = parseDateString(lead.date);
-      if (parsed) {
-        const monthIndex = parsed.getMonth();
-        const key = months[monthIndex];
-        if (key in monthlyMap) {
-          monthlyMap[key].total++;
-          const serviceName = (lead.serviceType || (lead as any).service || "").toLowerCase();
-          if (serviceName.includes("aircond") || serviceName.includes("hvac") || serviceName.includes("vrv")) {
-            monthlyMap[key].aircond++;
-          } else if (serviceName.includes("elektrik") || serviceName.includes("wiring") || serviceName.includes("pendawaian")) {
-            monthlyMap[key].electrical++;
-          } else if (serviceName.includes("solar") || serviceName.includes("pv")) {
-            monthlyMap[key].solar++;
-          } else {
-            monthlyMap[key].testing++;
-          }
-        }
-      }
-    });
-
-    return months.map((m) => ({
-      month: m,
-      "Jumlah Sebut Harga": monthlyMap[m].total,
-      "Servis Aircond": monthlyMap[m].aircond,
-      "Pendawaian Elektrik": monthlyMap[m].electrical,
-      "Sistem Solar": monthlyMap[m].solar,
-      "Pengujian & Lain-lain": monthlyMap[m].testing,
-    }));
+  const handleCancelEdit = () => {
+    setEditingCertId(null);
+    setEditForm({});
   };
 
-  const dailyData = getDailyStats();
-  const monthlyData = getMonthlyStats();
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editForm.name || !editForm.issuingBody || !editForm.logoText) {
+      alert("Sila lengkapkan semua medan wajib.");
+      return;
+    }
 
-  // 3. Process MONTHLY COMPLETED SERVICES stats (Recharts)
-  const getMonthlyCompletedStats = () => {
-    const months = [
-      "Jan", "Feb", "Mac", "Apr", "Mei", "Jun",
-      "Jul", "Ogos", "Sep", "Okt", "Nov", "Dis"
-    ];
+    const specialtiesList = editSpecialtiesText
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
 
-    const completedMap: Record<string, number> = {};
-    months.forEach((m) => (completedMap[m] = 0));
-
-    // Count completed leads
-    leads.forEach((l) => {
-      if (l.status === "Completed") {
-        const parsed = parseDateString(l.date);
-        if (parsed) {
-          const m = months[parsed.getMonth()];
-          if (m in completedMap) completedMap[m]++;
-        }
+    const updated = certifications.map((c) => {
+      if (c.id === editingCertId) {
+        return {
+          ...c,
+          ...editForm,
+          specialties: specialtiesList,
+          imageUrl: editForm.imageUrl || undefined,
+          pdfUrl: editForm.pdfUrl || undefined,
+        } as Certification;
       }
+      return c;
     });
 
-    // Count completed projects
-    projects.forEach((p) => {
-      if (p.status === "Completed") {
-        const parsed = parseDateString(p.completionDate);
-        if (parsed) {
-          const m = months[parsed.getMonth()];
-          if (m in completedMap) completedMap[m]++;
-        } else {
-          // fallback default current month or evenly distributed
-          completedMap["Jul"]++;
-        }
-      }
-    });
-
-    return months.map((m) => ({
-      month: m,
-      "Servis Diselesaikan": completedMap[m],
-    }));
+    onSave(updated);
+    setEditingCertId(null);
+    setEditForm({});
   };
 
-  const monthlyCompletedData = getMonthlyCompletedStats();
-
-  // 5. Process PROJECT LEADS BY STATUS Bar Chart (Workload Distribution)
-  const getLeadsByStatusStats = () => {
-    const statusMap: Record<string, { label: string; count: number; color: string }> = {
-      "New": { label: "Baru", count: 0, color: "#ef4444" },
-      "Reviewed": { label: "Disemak", count: 0, color: "#f59e0b" },
-      "Contacted": { label: "Dihubungi", count: 0, color: "#3b82f6" },
-      "Quoted": { label: "Sebut Harga", count: 0, color: "#8b5cf6" },
-      "Completed": { label: "Selesai", count: 0, color: "#10b981" },
-    };
-
-    leads.forEach((l) => {
-      const st = l.status || "New";
-      if (statusMap[st]) {
-        statusMap[st].count++;
-      } else {
-        statusMap[st] = { label: st, count: 1, color: "#64748b" };
-      }
-    });
-
-    return Object.entries(statusMap).map(([, val]) => ({
-      statusLabel: val.label,
-      "Jumlah Lead": val.count,
-      fill: val.color,
-    }));
-  };
-
-  const leadsByStatusData = getLeadsByStatusStats();
-
-  // 4. Maintenance Reminder Customers (6 Months filter)
-  const getMaintenanceDueLeads = () => {
-    const now = new Date();
-    return leads.filter((l) => {
-      const parsed = parseDateString(l.date);
-      if (!parsed) return false;
-      const diffDays = Math.floor((now.getTime() - parsed.getTime()) / (1000 * 3600 * 24));
-      // Completed or past service over 150 days (~5-6 months)
-      return diffDays >= 150 || l.status === "Completed";
-    });
-  };
-
-  const maintenanceDueLeads = getMaintenanceDueLeads();
-  const [reminderSending, setReminderSending] = React.useState<string | null>(null);
-  const [reminderSentMap, setReminderSentMap] = React.useState<Record<string, boolean>>({});
-
-  const handleSendMaintenanceEmail = async (lead: LeadQuote) => {
-    setReminderSending(lead.id);
-    try {
-      const res = await fetch("/api/send-maintenance-reminder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: lead.email,
-          name: lead.name,
-          serviceType: lead.serviceType,
-          lastServiceDate: lead.date,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setReminderSentMap((prev) => ({ ...prev, [lead.id]: true }));
-        alert(`Peringatan Servis Berkala (6 Bulan) berjaya dihantar ke ${lead.email}!`);
-      } else {
-        alert(`Peringatan dihantar melalui simulasi sistem ke ${lead.email}.`);
-        setReminderSentMap((prev) => ({ ...prev, [lead.id]: true }));
-      }
-    } catch (e) {
-      alert(`Peringatan Servis Berkala (6 Bulan) berjaya direkodkan untuk ${lead.email}.`);
-      setReminderSentMap((prev) => ({ ...prev, [lead.id]: true }));
-    } finally {
-      setReminderSending(null);
+  const handleDelete = (id: string) => {
+    if (confirm("Adakah anda pasti mahu memadam sijil / perakuan ini?")) {
+      const updated = certifications.filter((c) => c.id !== id);
+      onSave(updated);
     }
   };
 
-  // Category statistics for projects
-  const counts = [
-    "Electrical Installation",
-    "Aircond Installation",
-    "Testing & Commissioning",
-    "MSB & DB Installation",
-    "Solar Installation",
-  ].map((cat) => ({
-    category: cat,
-    count: projects.filter((p) => p.category === cat).length,
-  }));
+  const handleAddSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !newCertForm.name ||
+      !newCertForm.issuingBody ||
+      !newCertForm.logoText
+    ) {
+      alert("Sila lengkapkan semua medan wajib.");
+      return;
+    }
 
-  const maxVal = Math.max(...counts.map((x) => x.count), 1);
+    const specialtiesList = newSpecialtiesText
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between"
-            >
-              <div className="w-full space-y-3">
-                <div className="h-3 bg-slate-200 rounded w-1/2"></div>
-                <div className="h-8 bg-slate-200 rounded w-1/3"></div>
-                <div className="h-2 bg-slate-200 rounded w-3/4"></div>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-slate-100 flex-shrink-0 ml-4"></div>
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-6">
-            <div className="h-40 bg-slate-200 rounded-2xl"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    const newCert: Certification = {
+      id: `cert-${Date.now()}`,
+      name: newCertForm.name,
+      issuingBody: newCertForm.issuingBody,
+      logoText: newCertForm.logoText,
+      description: newCertForm.description || "",
+      registrationNo: newCertForm.registrationNo || "",
+      validity: newCertForm.validity || "",
+      specialties: specialtiesList,
+      imageUrl: newCertForm.imageUrl || undefined,
+      pdfUrl: newCertForm.pdfUrl || undefined,
+    };
+
+    onSave([...certifications, newCert]);
+    setNewCertForm({
+      name: "",
+      issuingBody: "",
+      logoText: "",
+      description: "",
+      registrationNo: "",
+      validity: "",
+      specialties: [],
+      imageUrl: "",
+      pdfUrl: "",
+    });
+    setNewSpecialtiesText("");
+    setShowAddForm(false);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Upper Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
-              Jumlah Projek G2
-            </p>
-            <p className="text-3xl font-black text-[#0F172A] mt-1">
-              {totalProjects}
-            </p>
-            <span className="text-[10px] text-green-600 font-bold block mt-1">
-              {completedProjects} Selesai • {inProgressProjects} Aktif
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-[#0F172A]">
-            <Briefcase className="w-6 h-6" />
-          </div>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h3 className="font-bold text-[#0F172A] text-lg flex items-center gap-2">
+            <Award className="w-5 h-5 text-[#D4AF37]" />
+            Pengurusan Sijil, Perakuan & Lesen Syarikat (G2)
+          </h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Kemaskini kelayakan rasmi daripada CIDB, ST, MOF atau badan piawaian
+            lain di sini demi memelihara integriti permohonan sebut harga
+            bumiputera.
+          </p>
         </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
-              Peti Sebut Harga (Leads)
-            </p>
-            <p className="text-3xl font-black text-[#0F172A] mt-1">
-              {totalLeads}
-            </p>
-            <span className="text-[10px] text-amber-600 font-bold block mt-1 animate-pulse">
-              {newLeads} Baru Menunggu Respon
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-[#D4AF37]">
-            <Mail className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
-              Pemohon Kerjaya
-            </p>
-            <p className="text-3xl font-black text-[#0F172A] mt-1">
-              {totalApps}
-            </p>
-            <span className="text-[10px] text-blue-600 font-bold block mt-1">
-              Dari {totalCareers} Jawatan Aktif
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-            <Users className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
-              Artikel Blog SEO
-            </p>
-            <p className="text-3xl font-black text-[#0F172A] mt-1">
-              {blogs.length}
-            </p>
-            <span className="text-[10px] text-purple-600 font-bold block mt-1">
-              Membantu Local SEO Google
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
-            <FileText className="w-6 h-6" />
-          </div>
-        </div>
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="bg-[#0F172A] text-white hover:bg-slate-800 text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-lg flex items-center gap-1.5 transition self-start sm:self-center"
+        >
+          {showAddForm ? (
+            <X className="w-4 h-4" />
+          ) : (
+            <Plus className="w-4 h-4" />
+          )}
+          {showAddForm ? "Tutup Borang" : "Tambah Sijil Baharu"}
+        </button>
       </div>
 
-      {/* Booking Statistics Row (Daily & Monthly) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Daily Bookings Chart */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between border-b pb-4 mb-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-indigo-600" />
-              <h3 className="font-bold text-[#0F172A] text-sm">
-                Trend Tempahan Harian (7 Hari Terakhir)
-              </h3>
-            </div>
-            <span className="text-[10px] uppercase font-extrabold bg-indigo-50 text-indigo-700 px-2 py-1 rounded">
-              Harian
-            </span>
+      {/* Add Sijil Form */}
+      {showAddForm && (
+        <form
+          onSubmit={handleAddSubmit}
+          className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-4 shadow-inner"
+        >
+          <div className="border-b pb-2 mb-4">
+            <h4 className="font-bold text-[#0F172A] text-xs uppercase tracking-wider">
+              Borang Pendaftaran Sijil / Lesen Baharu
+            </h4>
+            <p className="text-[10px] text-slate-400">
+              Masukkan butiran rasmi untuk dikesan di halaman awam dan dimuat
+              turun oleh rakan niaga.
+            </p>
           </div>
 
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={dailyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorDaily" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="date" tickLine={false} style={{ fontSize: "10px", fill: "#64748b", fontWeight: "bold" }} />
-                <YAxis allowDecimals={false} tickLine={false} axisLine={false} style={{ fontSize: "10px", fill: "#64748b" }} />
-                <Tooltip contentStyle={{ background: "#ffffff", borderRadius: "12px", border: "1px solid #e2e8f0", fontSize: "11px", fontWeight: "bold" }} />
-                <Area type="monotone" dataKey="Tempahan" stroke="#4f46e5" strokeWidth={2} fillOpacity={1} fill="url(#colorDaily)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Monthly Incoming Leads Bar Chart (Recharts) */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between border-b pb-4 mb-4">
-            <div className="flex items-center gap-2">
-              <BarChart2 className="w-5 h-5 text-[#D4AF37]" />
-              <div>
-                <h3 className="font-bold text-[#0F172A] text-sm">
-                  Permohonan Sebut Harga (Leads) Mengikut Bulan
-                </h3>
-                <p className="text-[10px] text-slate-500 font-medium">
-                  Carta Bar Recharts - Trend Permintaan Servis M&E (Aircond, Elektrik, Solar)
-                </p>
-              </div>
-            </div>
-            <span className="text-[10px] uppercase font-extrabold bg-[#D4AF37]/10 text-[#D4AF37] px-2.5 py-1 rounded-full border border-[#D4AF37]/20">
-              Recharts Bar Chart
-            </span>
-          </div>
-
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="month" tickLine={false} style={{ fontSize: "10px", fill: "#64748b", fontWeight: "bold" }} />
-                <YAxis allowDecimals={false} tickLine={false} axisLine={false} style={{ fontSize: "10px", fill: "#64748b" }} />
-                <Tooltip contentStyle={{ background: "#0F172A", color: "#ffffff", borderRadius: "12px", border: "1px solid #D4AF37", fontSize: "11px", fontWeight: "bold" }} />
-                <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
-                <Bar dataKey="Servis Aircond" fill="#D4AF37" radius={[4, 4, 0, 0]} maxBarSize={20} />
-                <Bar dataKey="Pendawaian Elektrik" fill="#0F172A" radius={[4, 4, 0, 0]} maxBarSize={20} />
-                <Bar dataKey="Sistem Solar" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={20} />
-                <Bar dataKey="Pengujian & Lain-lain" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={20} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Recharts Bar Chart: Project Leads Grouped by Status (Workload Distribution) */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex items-center justify-between border-b pb-4 mb-4">
-          <div className="flex items-center gap-2">
-            <Layers className="w-5 h-5 text-indigo-600" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
             <div>
-              <h3 className="font-bold text-[#0F172A] text-sm">
-                Taburan Status Sebut Harga & Tempahan (Agihan Beban Kerja)
-              </h3>
-              <p className="text-[10px] text-slate-500 font-medium">
-                Carta Bar Recharts - Agihan Lead Mengikut Fasa Status Pilihan (Baru, Disemak, Dihubungi, Sebut Harga, Selesai)
-              </p>
-            </div>
-          </div>
-          <span className="text-[10px] uppercase font-extrabold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full border border-indigo-200">
-            Workload Distribution
-          </span>
-        </div>
-
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={leadsByStatusData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="statusLabel" tickLine={false} style={{ fontSize: "11px", fill: "#0F172A", fontWeight: "bold" }} />
-              <YAxis allowDecimals={false} tickLine={false} axisLine={false} style={{ fontSize: "10px", fill: "#64748b" }} />
-              <Tooltip
-                contentStyle={{ background: "#0F172A", color: "#ffffff", borderRadius: "12px", border: "1px solid #8b5cf6", fontSize: "11px", fontWeight: "bold" }}
+              <label className="block font-bold text-slate-700 uppercase mb-1">
+                Nama Sijil / Lesen <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Contoh: Perakuan Pendaftaran CIDB (G2)"
+                value={newCertForm.name}
+                onChange={(e) =>
+                  setNewCertForm((prev) => ({ ...prev, name: e.target.value }))
+                }
+                className="w-full p-2.5 border border-slate-300 rounded bg-white"
               />
-              <Bar dataKey="Jumlah Lead" radius={[6, 6, 0, 0]} maxBarSize={40}>
-                {leadsByStatusData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-5 gap-2">
-          {leadsByStatusData.map((item, idx) => (
-            <div key={idx} className="p-2 bg-slate-50 border border-slate-100 rounded-xl text-center">
-              <span className="text-[10px] text-slate-500 font-bold block truncate">{item.statusLabel}</span>
-              <span className="text-base font-black text-[#0F172A]">{item["Jumlah Lead"]}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Monthly Completed Services Graph (Recharts) & 6-Month Maintenance Reminder System */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* MONTHLY COMPLETED SERVICES GRAPH */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between border-b pb-4 mb-4">
-            <div className="flex items-center gap-2">
-              <BarChart2 className="w-5 h-5 text-emerald-600" />
-              <div>
-                <h3 className="font-bold text-[#0F172A] text-sm">
-                  Jumlah Servis Diselesaikan Setiap Bulan
-                </h3>
-                <p className="text-[10px] text-slate-500 font-medium">
-                  Graf Ringkasan Recharts — Prestasi Penyiapan Servis & Pemasangan BFG
-                </p>
-              </div>
-            </div>
-            <span className="text-[10px] uppercase font-black bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200">
-              Diselesaikan
-            </span>
-          </div>
-
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyCompletedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#047857" stopOpacity={1} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="month" tickLine={false} style={{ fontSize: "10px", fill: "#64748b", fontWeight: "bold" }} />
-                <YAxis allowDecimals={false} tickLine={false} axisLine={false} style={{ fontSize: "10px", fill: "#64748b" }} />
-                <Tooltip contentStyle={{ background: "#0F172A", color: "#ffffff", borderRadius: "12px", border: "1px solid #10b981", fontSize: "11px", fontWeight: "bold" }} />
-                <Bar dataKey="Servis Diselesaikan" fill="url(#colorCompleted)" radius={[6, 6, 0, 0]} maxBarSize={28} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-950 font-medium">
-            <span className="font-bold">Jumlah Servis Diselesaikan Terkumpul:</span>
-            <span className="font-mono font-extrabold text-sm text-emerald-800">
-              {monthlyCompletedData.reduce((acc, curr) => acc + curr["Servis Diselesaikan"], 0)} Servis
-            </span>
-          </div>
-        </div>
-
-        {/* 6-MONTH MAINTENANCE REMINDER SYSTEM */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b pb-4 mb-4">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-amber-500" />
-                <div>
-                  <h3 className="font-bold text-[#0F172A] text-sm">
-                    Sistem Peringatan Servis Berkala (6 Bulan)
-                  </h3>
-                  <p className="text-[10px] text-slate-500 font-medium">
-                    Notifikasi & Emel Peringatan Automatik Untuk Penyelenggaraan Aircond / Elektrik
-                  </p>
-                </div>
-              </div>
-              <span className="text-[10px] uppercase font-black bg-amber-50 text-amber-800 px-2.5 py-1 rounded-full border border-amber-200">
-                Maintenance Reminder
-              </span>
             </div>
 
-            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-              {maintenanceDueLeads.length === 0 ? (
-                <div className="py-12 text-center text-slate-400 text-xs italic">
-                  Tiada pelanggan melebihi tempoh 6 bulan buat masa ini.
-                </div>
-              ) : (
-                maintenanceDueLeads.slice(0, 5).map((lead) => (
-                  <div
-                    key={lead.id}
-                    className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+            <div>
+              <label className="block font-bold text-slate-700 uppercase mb-1">
+                Badan Penerbit <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Contoh: Suruhanjaya Tenaga (ST)"
+                value={newCertForm.issuingBody}
+                onChange={(e) =>
+                  setNewCertForm((prev) => ({
+                    ...prev,
+                    issuingBody: e.target.value,
+                  }))
+                }
+                className="w-full p-2.5 border border-slate-300 rounded bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 uppercase mb-1">
+                Kod / Logo Teks Ringkas <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Contoh: CIDB G2 atau ST CLASS C"
+                value={newCertForm.logoText}
+                onChange={(e) =>
+                  setNewCertForm((prev) => ({
+                    ...prev,
+                    logoText: e.target.value,
+                  }))
+                }
+                className="w-full p-2.5 border border-slate-300 rounded bg-white"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 uppercase mb-1">
+                No. Pendaftaran Sijil / Lesen
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: 202304001234 atau ST(SEL)REG-9876"
+                value={newCertForm.registrationNo}
+                onChange={(e) =>
+                  setNewCertForm((prev) => ({
+                    ...prev,
+                    registrationNo: e.target.value,
+                  }))
+                }
+                className="w-full p-2.5 border border-slate-300 rounded bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 uppercase mb-1">
+                Tempoh Sah Laku
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: Jun 2025 - Jun 2028 (Aktif)"
+                value={newCertForm.validity}
+                onChange={(e) =>
+                  setNewCertForm((prev) => ({
+                    ...prev,
+                    validity: e.target.value,
+                  }))
+                }
+                className="w-full p-2.5 border border-slate-300 rounded bg-white"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 uppercase mb-1">
+                URL Imej Sijil (Bagi Tontonan Sahaja - Dilindungi daripada Muat
+                Turun)
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: https://example.com/sijil-cidb-original.jpg"
+                value={newCertForm.imageUrl || ""}
+                onChange={(e) =>
+                  setNewCertForm((prev) => ({
+                    ...prev,
+                    imageUrl: e.target.value,
+                  }))
+                }
+                className="w-full p-2.5 border border-slate-300 rounded bg-white font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 uppercase mb-1">
+                URL Fail PDF Sijil (Alternatif Tontonan Sahaja)
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: https://example.com/sijil-cidb-original.pdf"
+                value={newCertForm.pdfUrl || ""}
+                onChange={(e) =>
+                  setNewCertForm((prev) => ({
+                    ...prev,
+                    pdfUrl: e.target.value,
+                  }))
+                }
+                className="w-full p-2.5 border border-slate-300 rounded bg-white font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="text-xs">
+            <label className="block font-bold text-slate-700 uppercase mb-1">
+              Ringkasan Deskripsi Sijil
+            </label>
+            <textarea
+              rows={2}
+              placeholder="Berikan keterangan ringkas mengenai kepentingan kelayakan ini bagi syarikat..."
+              value={newCertForm.description}
+              onChange={(e) =>
+                setNewCertForm((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+              className="w-full p-2.5 border border-slate-300 rounded bg-white"
+            />
+          </div>
+
+          <div className="text-xs">
+            <label className="block font-bold text-slate-700 uppercase mb-1">
+              Butiran Spesifikasi Sijil / Bullets (Tulis satu perkara setiap
+              satu barisan beza)
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Contoh:
+B04: Kerja Am Bangunan
+B01: Kerja Kejuruteraan Awam
+ME01: Sistem Penyaman Udara"
+              value={newSpecialtiesText}
+              onChange={(e) => setNewSpecialtiesText(e.target.value)}
+              className="w-full p-2.5 border border-slate-300 rounded bg-white font-mono text-xs"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => setShowAddForm(false)}
+              className="px-4 py-2 bg-slate-200 text-slate-700 hover:bg-slate-300 rounded-lg font-bold"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center gap-1.5 shadow"
+            >
+              <Save className="w-4 h-4" /> Simpan Sijil
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Sijil List */}
+      <div className="space-y-4">
+        {certifications.length === 0 ? (
+          <div className="border border-dashed p-8 rounded-2xl text-center text-slate-400 text-xs">
+            Tiada sijil berdaftar dikesan dalam pangkalan data. Gunakan borang
+            di atas untuk mendaftarkannya sekarang.
+          </div>
+        ) : (
+          certifications.map((cert) => {
+            const isEditing = editingCertId === cert.id;
+            return (
+              <div
+                key={cert.id}
+                className="bg-white border rounded-2xl shadow-xs overflow-hidden"
+              >
+                {isEditing ? (
+                  /* Edit Mode */
+                  <form
+                    onSubmit={handleSaveEdit}
+                    className="p-6 space-y-4 text-xs bg-amber-50/30"
                   >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900">{lead.name}</span>
-                        <span className="text-[9px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-mono font-bold">
-                          {lead.serviceType}
-                        </span>
-                      </div>
-                      <p className="text-[10.5px] text-slate-500 mt-0.5">
-                        E-mel: {lead.email} | Servis Terakhir: <strong className="text-slate-800">{lead.date}</strong>
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSendMaintenanceEmail(lead)}
-                      disabled={reminderSending === lead.id || reminderSentMap[lead.id]}
-                      className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase transition cursor-pointer shrink-0 shadow-2xs ${
-                        reminderSentMap[lead.id]
-                          ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                          : "bg-[#0F172A] hover:bg-slate-800 text-[#D4AF37] border border-[#D4AF37]/30"
-                      }`}
-                    >
-                      {reminderSending === lead.id
-                        ? "Hantar Emel..."
-                        : reminderSentMap[lead.id]
-                        ? "✓ Emel Peringatan Dihantar"
-                        : "Hantar Emel Peringatan 6 Bulan"}
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200 text-[10.5px] text-amber-900 font-medium">
-            💡 <span className="font-bold">Automasi 6 Bulan:</span> Pelanggan yang telah menjalani servis aircond/pendawaian 6 bulan lepas disaring secara automatik untuk disyorkan penyelenggaraan berkala.
-          </div>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Project category breakdown */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b pb-4 mb-4">
-              <div className="flex items-center gap-2">
-                <BarChart2 className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-bold text-[#0F172A] text-sm">
-                  Taburan Projek Mengikut Kategori
-                </h3>
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-2">
-              {counts.map((item, idx) => {
-                const percent = (item.count / maxVal) * 100;
-                return (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-[11px] font-bold text-slate-700">
-                      <span>{item.category === "Aircond Installation" ? "Aircond/HVAC" : item.category === "Electrical Installation" ? "Pendawaian Elektrik" : item.category}</span>
-                      <span className="text-slate-500">
-                        {item.count} ({Math.round(percent)}%)
+                    <div className="border-b pb-2 mb-2">
+                      <span className="font-extrabold text-amber-700 text-[10px] uppercase tracking-wider">
+                        Mod Kemaskini Sijil
                       </span>
                     </div>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${percent}%` }}
-                        transition={{ duration: 0.6, delay: idx * 0.1 }}
-                        className="bg-gradient-to-r from-[#0F172A] to-[#D4AF37] h-full rounded-full"
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block font-bold text-slate-700 uppercase mb-1">
+                          Nama Sijil <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editForm.name}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              name: e.target.value,
+                            }))
+                          }
+                          className="w-full p-2.5 border border-slate-300 rounded bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 uppercase mb-1">
+                          Badan Penerbit <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editForm.issuingBody}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              issuingBody: e.target.value,
+                            }))
+                          }
+                          className="w-full p-2.5 border border-slate-300 rounded bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 uppercase mb-1">
+                          Logo Teks Ringkas{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editForm.logoText}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              logoText: e.target.value,
+                            }))
+                          }
+                          className="w-full p-2.5 border border-slate-300 rounded bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block font-bold text-slate-700 uppercase mb-1">
+                          No. Pendaftaran
+                        </label>
+                        <input
+                          type="text"
+                          value={editForm.registrationNo || ""}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              registrationNo: e.target.value,
+                            }))
+                          }
+                          className="w-full p-2.5 border border-slate-300 rounded bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 uppercase mb-1">
+                          Tempoh Sah Laku
+                        </label>
+                        <input
+                          type="text"
+                          value={editForm.validity || ""}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              validity: e.target.value,
+                            }))
+                          }
+                          className="w-full p-2.5 border border-slate-300 rounded bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block font-bold text-slate-700 uppercase mb-1">
+                          URL Imej Sijil (Bagi Tontonan Sahaja)
+                        </label>
+                        <input
+                          type="text"
+                          value={editForm.imageUrl || ""}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              imageUrl: e.target.value,
+                            }))
+                          }
+                          className="w-full p-2.5 border border-slate-300 rounded bg-white font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 uppercase mb-1">
+                          URL Fail PDF Sijil (Alternatif Paparan Sahaja)
+                        </label>
+                        <input
+                          type="text"
+                          value={editForm.pdfUrl || ""}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              pdfUrl: e.target.value,
+                            }))
+                          }
+                          className="w-full p-2.5 border border-slate-300 rounded bg-white font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 uppercase mb-1">
+                        Deskripsi Ringkas
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={editForm.description}
+                        onChange={(e) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            description: e.target.value,
+                          }))
+                        }
+                        className="w-full p-2.5 border border-slate-300 rounded bg-white"
                       />
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
 
-          <div className="mt-6 p-3 bg-slate-50 rounded-xl border border-slate-100 text-[10px] text-slate-500 flex gap-2 items-center">
-            <Cpu className="w-4 h-4 text-[#D4AF37] flex-shrink-0" />
-            <span>
-              Graf menggambarkan taburan kerja real-time mengikut pangkalan data bersepadu.
-            </span>
-          </div>
-        </div>
-
-        {/* Audit Trail Panel */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b pb-4 mb-3">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-amber-600" />
-                <h3 className="font-bold text-[#0F172A] text-sm">
-                  Sistem Log Aktiviti Portal (Rujukan Audit)
-                </h3>
-              </div>
-              <span className="text-[10px] uppercase font-black bg-rose-50 text-rose-700 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                <ShieldAlert className="w-3 h-3 text-rose-600 animate-pulse" />
-                Audit Trail Secure
-              </span>
-            </div>
-
-            {/* Log Feed */}
-            <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-              {activityLogs.length === 0 ? (
-                <div className="py-12 text-center text-slate-400 text-xs italic">
-                  Tiada rekod aktiviti log ditemui buat masa ini.
-                </div>
-              ) : (
-                activityLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-3 text-xs"
-                  >
-                    <div className="bg-white border border-slate-200 rounded-lg p-2 text-slate-500 shrink-0">
-                      <UserCheck className="w-4 h-4 text-[#D4AF37]" />
+                    <div>
+                      <label className="block font-bold text-slate-700 uppercase mb-1">
+                        Butiran Spesifikasi Sijil (Satu per baris)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={editSpecialtiesText}
+                        onChange={(e) => setEditSpecialtiesText(e.target.value)}
+                        className="w-full p-2.5 border border-slate-300 rounded bg-white font-mono text-xs"
+                      />
                     </div>
-                    <div className="space-y-0.5 flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-black text-slate-800 truncate">
-                          {log.adminUsername}
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="px-4 py-2 bg-slate-200 text-slate-700 hover:bg-slate-300 rounded-lg font-bold"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center gap-1 shadow"
+                      >
+                        <Check className="w-4 h-4" /> Simpan Perubahan
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  /* Display Mode */
+                  <div className="p-6 flex flex-col md:flex-row items-start gap-4 justify-between">
+                    <div className="flex items-start gap-4">
+                      {/* Logo Badge Mimicker */}
+                      <div className="w-16 h-20 bg-slate-50 border-2 border-[#D4AF37]/50 rounded-xl flex flex-col items-center justify-center p-1.5 shrink-0 select-none">
+                        <span className="text-[9px] font-black text-slate-400 text-center border-b pb-0.5 w-full uppercase block">
+                          {cert.logoText.split(" ")[0]}
                         </span>
-                        <span className="text-[10px] font-bold text-slate-400 shrink-0">
-                          {new Date(log.timestamp).toLocaleString("ms-MY")}
+                        <span className="text-[12px] font-black text-[#0F172A] text-center block mt-1 tracking-tighter leading-tight whitespace-normal max-w-full">
+                          {cert.logoText.split(" ").slice(1).join(" ") ||
+                            cert.logoText}
                         </span>
                       </div>
-                      <p className="text-slate-600 text-[11px] leading-relaxed">
-                        {log.action}
-                      </p>
-                      <div className="flex items-center gap-1.5 pt-0.5">
-                        <span className="text-[9px] font-mono bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded font-bold uppercase">
-                          {log.adminRole}
+
+                      <div className="space-y-1">
+                        <h4 className="font-extrabold text-[#0F172A] text-sm uppercase">
+                          {cert.name}
+                        </h4>
+                        <span className="text-[10px] text-slate-400 block font-bold">
+                          Diterbit oleh:{" "}
+                          <strong className="text-slate-600 font-bold">
+                            {cert.issuingBody}
+                          </strong>
                         </span>
-                        {log.bookingId && (
-                          <span className="text-[9px] font-mono bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-bold">
-                            TID: {log.bookingId}
-                          </span>
+
+                        {(cert.registrationNo || cert.validity) && (
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500 py-1 font-mono">
+                            {cert.registrationNo && (
+                              <span>
+                                No Sijil:{" "}
+                                <strong className="text-slate-700 font-bold">
+                                  {cert.registrationNo}
+                                </strong>
+                              </span>
+                            )}
+                            {cert.validity && (
+                              <span>
+                                {" "}
+                                validity:{" "}
+                                <strong className="text-slate-700 font-bold">
+                                  {cert.validity}
+                                </strong>
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <p className="text-slate-500 text-xs mt-1 leading-relaxed max-w-2xl">
+                          {cert.description}
+                        </p>
+
+                        {cert.specialties && cert.specialties.length > 0 && (
+                          <div className="mt-2 pl-4 border-l-2 border-[#D4AF37]/40 space-y-0.5">
+                            <span className="text-[9px] text-[#D4AF37] uppercase font-bold tracking-wider block">
+                              Kelayakan Bidang / Kod Kerja:
+                            </span>
+                            {cert.specialties.map((spec, idx) => (
+                              <span
+                                key={idx}
+                                className="block text-[10px] md:text-xs text-slate-600 list-item ml-2 list-disc"
+                              >
+                                {spec}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
 
-          <div className="mt-4 text-[10px] text-slate-400 italic">
-            * Setiap kemasukan atau pertukaran status tempahan dikunci secara kriptografi mengikut masa pelayan.
-          </div>
-        </div>
+                    <div className="flex gap-2 shrink-0 self-end md:self-start">
+                      <button
+                        onClick={() => handleStartEdit(cert)}
+                        className="p-2 border text-slate-600 hover:text-[#0F172A] hover:bg-slate-50 rounded-lg transition"
+                        title="Kemaskini Sijil"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(cert.id)}
+                        className="p-2 border border-rose-100 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                        title="Padam Sijil"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

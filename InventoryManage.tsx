@@ -1,376 +1,586 @@
-import React, { useState } from "react";
-import { motion } from "motion/react";
+import React, { useState, useEffect } from "react";
+import { db } from "../lib/firebase";
 import {
-  X,
-  Send,
-  Briefcase,
-  FileSignature,
-  Paperclip,
+  collection,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  doc,
+  setDoc,
+  getDocs,
+  query,
+  orderBy,
+} from "firebase/firestore";
+import {
+  Package,
+  Plus,
+  TrendingDown,
+  History,
+  AlertTriangle,
+  CheckCircle,
   FileText,
-  Upload,
-  Trash2,
-  Check,
+  User,
+  Wrench,
+  ChevronRight,
 } from "lucide-react";
-import { Career } from "../types";
+import { Project } from "../types";
 
-interface CareerApplicationModalProps {
-  job: Career;
-  onClose: () => void;
-  onSubmit: (data: {
-    careerId: string;
-    careerTitle: string;
-    name: string;
-    email: string;
-    phone: string;
-    experienceSummary: string;
-    resumeUrl?: string;
-    resumeName?: string;
-    certificatesUrl?: string;
-    certificatesName?: string;
-    othersUrl?: string;
-    othersName?: string;
-  }) => void;
+interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  stock: number;
+  unit: string;
+  minStock: number;
 }
 
-export default function CareerApplicationModal({
-  job,
-  onClose,
-  onSubmit,
-}: CareerApplicationModalProps) {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    experienceSummary: "",
-  });
+interface InventoryTransaction {
+  id: string;
+  itemId: string;
+  itemName: string;
+  projectName: string;
+  projectId: string;
+  quantityUsed: number;
+  unit: string;
+  recordedBy: string;
+  timestamp: string;
+  notes?: string;
+}
 
-  const [resumeFile, setResumeFile] = useState<{
-    name: string;
-    base64: string;
-  } | null>(null);
-  const [certFile, setCertFile] = useState<{
-    name: string;
-    base64: string;
-  } | null>(null);
-  const [otherFile, setOtherFile] = useState<{
-    name: string;
-    base64: string;
-  } | null>(null);
-  const [isLoadingFile, setIsLoadingFile] = useState<boolean>(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+interface InventoryManageProps {
+  projects: Project[];
+}
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+export default function InventoryManage({ projects }: InventoryManageProps) {
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Form States
+  const [showAddForm, setShowAddForm] = useState<boolean>(false);
+  const [newItemName, setNewItemName] = useState<string>("");
+  const [newItemCategory, setNewItemCategory] = useState<string>("Aircond");
+  const [newItemStock, setNewItemStock] = useState<number>(50);
+  const [newItemUnit, setNewItemUnit] = useState<string>("unit");
+  const [newItemMin, setNewItemMin] = useState<number>(10);
+
+  // Usage Form States
+  const [showUseForm, setShowUseForm] = useState<boolean>(false);
+  const [selectedItemId, setSelectedItemId] = useState<string>("");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [quantityUsed, setQuantityUsed] = useState<number>(1);
+  const [recordedBy, setRecordedBy] = useState<string>("");
+  const [usageNotes, setUsageNotes] = useState<string>("");
+
+  const [notif, setNotif] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+
+  useEffect(() => {
+    // 1. Listen to Inventory
+    const unsubInv = onSnapshot(collection(db, "inventory"), async (snap) => {
+      if (snap.empty) {
+        // Seed default inventory items for BFG PLT
+        const defaults: InventoryItem[] = [
+          { id: "inv-1", name: "Gas Pendingin Hawa R32", category: "Aircond", stock: 45, unit: "kg", minStock: 15 },
+          { id: "inv-2", name: "Kabel Elektrik Fajar 1.5mm", category: "Wiring", stock: 120, unit: "meter", minStock: 30 },
+          { id: "inv-3", name: "Paip Kuprum Daikin 1/2 inch", category: "Aircond", stock: 85, unit: "kaki", minStock: 20 },
+          { id: "inv-4", name: "Soket Dinding Schneider 13A", category: "Aksesori", stock: 35, unit: "unit", minStock: 10 },
+          { id: "inv-5", name: "Kotak DB Elektrik Hager 12-Way", category: "Wiring", stock: 12, unit: "unit", minStock: 5 },
+        ];
+        for (const item of defaults) {
+          await setDoc(doc(db, "inventory", item.id), item);
+        }
+      } else {
+        const list: InventoryItem[] = [];
+        snap.forEach((doc) => {
+          list.push({ id: doc.id, ...doc.data() } as InventoryItem);
+        });
+        setItems(list);
+      }
+      setIsLoading(false);
+    }, (error) => {
+      console.warn("Error subscribing to inventory:", error);
+      setIsLoading(false);
+    });
+
+    // 2. Listen to Transactions
+    const qTrans = query(collection(db, "inventory_transactions"), orderBy("timestamp", "desc"));
+    const unsubTrans = onSnapshot(qTrans, (snap) => {
+      const list: InventoryTransaction[] = [];
+      snap.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() } as InventoryTransaction);
+      });
+      setTransactions(list);
+    }, (error) => {
+      console.warn("Error subscribing to inventory transactions:", error);
+    });
+
+    return () => {
+      unsubInv();
+      unsubTrans();
+    };
+  }, []);
+
+  const triggerNotif = (type: "success" | "error", msg: string) => {
+    setNotif({ type, msg });
+    setTimeout(() => setNotif(null), 4000);
   };
 
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    type: "resume" | "cert" | "other",
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Had saiz fail dikesan! Sila pastikan saiz fail kurang dari 5MB.");
+  const handleAddNewItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newItemName.trim()) {
+      triggerNotif("error", "Sila masukkan nama bahan!");
       return;
     }
 
-    setIsLoadingFile(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result as string;
-      if (type === "resume") {
-        setResumeFile({ name: file.name, base64 });
-      } else if (type === "cert") {
-        setCertFile({ name: file.name, base64 });
-      } else {
-        setOtherFile({ name: file.name, base64 });
-      }
-      setIsLoadingFile(false);
-    };
-    reader.onerror = () => {
-      alert("Ralat memuat naik fail.");
-      setIsLoadingFile(false);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const id = `inv-${Date.now()}`;
+      await setDoc(doc(db, "inventory", id), {
+        id,
+        name: newItemName.trim(),
+        category: newItemCategory,
+        stock: Number(newItemStock),
+        unit: newItemUnit.trim(),
+        minStock: Number(newItemMin),
+      });
+
+      setNewItemName("");
+      setNewItemStock(50);
+      setNewItemUnit("unit");
+      setNewItemMin(10);
+      setShowAddForm(false);
+      triggerNotif("success", `Bahan '${newItemName}' berjaya didaftarkan ke inventori.`);
+    } catch (err) {
+      console.error(err);
+      triggerNotif("error", "Gagal mendaftar bahan baharu.");
+    }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleRecordUsage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.phone) return;
+    if (!selectedItemId) {
+      triggerNotif("error", "Sila pilih bahan dari senarai stok!");
+      return;
+    }
+    if (!selectedProjectId) {
+      triggerNotif("error", "Sila pilih projek rujukan!");
+      return;
+    }
+    if (quantityUsed <= 0) {
+      triggerNotif("error", "Kuantiti mestilah melebihi 0!");
+      return;
+    }
 
-    onSubmit({
-      careerId: job.id,
-      careerTitle: job.title,
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      experienceSummary: formData.experienceSummary,
-      resumeUrl: resumeFile?.base64,
-      resumeName: resumeFile?.name,
-      certificatesUrl: certFile?.base64,
-      certificatesName: certFile?.name,
-      othersUrl: otherFile?.base64,
-      othersName: otherFile?.name,
-    });
+    const item = items.find((i) => i.id === selectedItemId);
+    const project = projects.find((p) => p.id === selectedProjectId);
 
-    setIsSubmitted(true);
-    setTimeout(() => {
-      onClose();
-    }, 2500);
+    if (!item) {
+      triggerNotif("error", "Bahan tidak ditemui!");
+      return;
+    }
+    if (item.stock < quantityUsed) {
+      triggerNotif("error", `Stok tidak mencukupi! Baki stok semasa hanya: ${item.stock} ${item.unit}`);
+      return;
+    }
+
+    try {
+      // 1. Create Transaction Document
+      const transId = `trans-${Date.now()}`;
+      const newTransaction: InventoryTransaction = {
+        id: transId,
+        itemId: item.id,
+        itemName: item.name,
+        projectId: selectedProjectId,
+        projectName: project ? project.title : "Projek Umum M&E",
+        quantityUsed: Number(quantityUsed),
+        unit: item.unit,
+        recordedBy: recordedBy.trim() || "Teknisi BFG",
+        timestamp: new Date().toISOString(),
+        notes: usageNotes.trim() || undefined,
+      };
+
+      await setDoc(doc(db, "inventory_transactions", transId), newTransaction);
+
+      // 2. Deduct inventory stock
+      const newStock = item.stock - quantityUsed;
+      await updateDoc(doc(db, "inventory", item.id), { stock: newStock });
+
+      // Clean form
+      setSelectedItemId("");
+      setSelectedProjectId("");
+      setQuantityUsed(1);
+      setRecordedBy("");
+      setUsageNotes("");
+      setShowUseForm(false);
+      triggerNotif("success", `Stok berjaya dikurangkan! ${quantityUsed} ${item.unit} '${item.name}' ditolak.`);
+    } catch (err) {
+      console.error(err);
+      triggerNotif("error", "Gagal merekodkan penggunaan stok.");
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-[#0F172A]/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 10 }}
-        className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200/80 flex flex-col max-h-[92vh]"
-      >
-        {/* Modal Header */}
-        <div className="bg-[#0F172A] text-white px-5 py-4.5 relative shrink-0">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 bg-slate-800/80 text-slate-300 hover:text-white rounded-full transition cursor-pointer"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-          <span className="text-[9px] uppercase tracking-wider font-extrabold text-[#D4AF37] block mb-0.5">
-            MOHON JAWATAN
-          </span>
-          <h3 className="text-sm sm:text-base font-extrabold flex items-center gap-2 tracking-tight text-white leading-tight">
-            <Briefcase className="w-4.5 h-4.5 text-[#D4AF37]" />
-            {job.title}
+    <div className="space-y-6">
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
+        <div>
+          <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+            <Package className="w-5 h-5 text-[#D4AF37]" />
+            Sistem Inventori & Stok Bahan Teknikal BFG
           </h3>
-          <p className="text-[11px] text-slate-400 mt-0.5 font-medium">
-            {job.department} &bull; {job.location}
+          <p className="text-xs text-slate-500 mt-1">
+            Pantau bekalan kabel, gas pendingin hawa, kotak DB, dan log kegunaan bahan bagi setiap projek yang dijalankan.
           </p>
         </div>
 
-        {/* Modal Body with safe scrollbar */}
-        <div className="p-5 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
-          {isSubmitted ? (
-            <div className="text-center py-10 space-y-4">
-              <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold animate-bounce shadow-inner">
-                ✓
-              </div>
-              <div className="space-y-1.5 animate-pulse">
-                <h4 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide">
-                  Permohonan Berjaya Dihantar!
-                </h4>
-                <p className="text-[11px] text-slate-500 max-w-xs mx-auto leading-relaxed">
-                  Terima kasih atas minat anda menyertai{" "}
-                  <strong>Bena Flash Global PLT</strong>. Unit Sumber Manusia
-                  (HR) kami sedang menilai permohonan anda.
-                </p>
-              </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setShowUseForm(true);
+              setShowAddForm(false);
+            }}
+            className="px-3 py-1.5 bg-[#0F172A] hover:bg-slate-800 text-[#D4AF37] rounded-xl text-xs font-bold uppercase transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+          >
+            <TrendingDown className="w-4 h-4" /> Rekod Guna Stok
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowAddForm(true);
+              setShowUseForm(false);
+            }}
+            className="px-3 py-1.5 bg-[#D4AF37] hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs uppercase transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+          >
+            <Plus className="w-4 h-4" /> Tambah Stok Baru
+          </button>
+        </div>
+      </div>
+
+      {/* NOTIFICATION TOAST */}
+      {notif && (
+        <div
+          className={`p-3.5 rounded-xl text-xs font-bold transition-all text-center border shadow-xs animate-bounce ${
+            notif.type === "success"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "bg-rose-50 border-rose-200 text-rose-800"
+          }`}
+        >
+          {notif.type === "success" ? "✓" : "⚠"} {notif.msg}
+        </div>
+      )}
+
+      {/* USE MATERIAL MODAL / SECTION */}
+      {showUseForm && (
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-5 rounded-2xl border border-amber-200 shadow-3xs">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+              <TrendingDown className="w-4 h-4 text-[#D4AF37]" /> Merekod Penggunaan Bahan Teknikal Projek
+            </h4>
+            <button
+              onClick={() => setShowUseForm(false)}
+              className="text-[10px] bg-slate-200 hover:bg-slate-300 px-2 py-0.5 rounded-md font-bold text-slate-600 transition"
+            >
+              Tutup
+            </button>
+          </div>
+
+          <form onSubmit={handleRecordUsage} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            {/* 1. Select Material */}
+            <div className="space-y-1">
+              <label className="block font-bold text-slate-500 uppercase text-[9px]">Pilih Bahan Inventori:</label>
+              <select
+                required
+                value={selectedItemId}
+                onChange={(e) => setSelectedItemId(e.target.value)}
+                className="w-full p-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none font-bold text-slate-800"
+              >
+                <option value="">-- Sila Pilih Bahan --</option>
+                {items.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name} (Baki: {i.stock} {i.unit})
+                  </option>
+                ))}
+              </select>
             </div>
-          ) : (
-            <form onSubmit={handleFormSubmit} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-extrabold text-slate-705 uppercase tracking-wider mb-1.5">
-                  Nama Penuh Calon
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  placeholder="Nama seperti di kad pengenalan"
-                  className="w-full text-xs p-2.5 border border-slate-300/80 rounded-xl focus:ring-2 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37] outline-none bg-slate-50 font-semibold text-slate-800 transition"
-                />
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-705 uppercase tracking-wider mb-1.5">
-                    E-mel Perhubungan
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    placeholder="nama@gmail.com"
-                    className="w-full text-xs p-2.5 border border-slate-300/80 rounded-xl focus:ring-2 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37] outline-none bg-slate-50 text-slate-800 transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-705 uppercase tracking-wider mb-1.5">
-                    No. Telefon (WhatsApp)
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    required
-                    placeholder="cth: 013-4567890"
-                    className="w-full text-xs p-2.5 border border-slate-300/80 rounded-xl focus:ring-2 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37] outline-none bg-slate-50 text-slate-800 transition"
-                  />
-                </div>
-              </div>
+            {/* 2. Select Project */}
+            <div className="space-y-1">
+              <label className="block font-bold text-slate-500 uppercase text-[9px]">Rujukan Projek Pelanggan:</label>
+              <select
+                required
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+                className="w-full p-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none font-bold text-slate-800"
+              >
+                <option value="">-- Sila Pilih Projek --</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title} ({p.client})
+                  </option>
+                ))}
+                <option value="umum-mne">Sesi Penyenggaraan Umum M&E / Aircond</option>
+              </select>
+            </div>
 
-              <div>
-                <label className="block text-[10px] font-extrabold text-slate-705 uppercase tracking-wider mb-1.5">
-                  Ringkasan Kualifikasi & Sijil Kompetensi
-                </label>
-                <textarea
-                  name="experienceSummary"
-                  value={formData.experienceSummary}
-                  onChange={handleChange}
-                  required
-                  rows={2}
-                  placeholder="cth: Pemegang PW4 ST, pengalaman memasang DB & kabel industri selama 3 tahun..."
-                  className="w-full text-xs p-2.5 border border-slate-300/80 rounded-xl focus:ring-2 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37] outline-none bg-slate-50 leading-relaxed text-slate-800 resize-none transition"
-                />
-              </div>
+            {/* 3. Quantity Used */}
+            <div className="space-y-1">
+              <label className="block font-bold text-slate-500 uppercase text-[9px]">Kuantiti Digunakan:</label>
+              <input
+                type="number"
+                required
+                min={1}
+                value={quantityUsed}
+                onChange={(e) => setQuantityUsed(Number(e.target.value))}
+                className="w-full p-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none font-semibold text-slate-800"
+              />
+            </div>
 
-              {/* Lampiran Dokumen Sokongan */}
-              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-3">
-                <div className="flex items-center gap-1.5 border-b border-slate-200/60 pb-1.5">
-                  <Paperclip className="w-3.5 h-3.5 text-[#D4AF37]" />
-                  <span className="text-[10px] font-black uppercase text-slate-800 tracking-wider">
-                    Dokumen Sokongan (Maks 5MB)
-                  </span>
-                </div>
+            {/* 4. Recorded By */}
+            <div className="space-y-1">
+              <label className="block font-bold text-slate-500 uppercase text-[9px]">Nama Teknisi / Penyelia:</label>
+              <input
+                type="text"
+                required
+                placeholder="E.g. Hafiz, Shahrul"
+                value={recordedBy}
+                onChange={(e) => setRecordedBy(e.target.value)}
+                className="w-full p-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none font-semibold text-slate-800"
+              />
+            </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {/* RESUME UPLOAD */}
-                  <div className="space-y-1">
-                    <span className="block text-[8px] font-extrabold text-slate-500 uppercase tracking-wide">
-                      1. Resume / CV
-                    </span>
-                    {resumeFile ? (
-                      <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-lg text-[9px]">
-                        <span
-                          className="truncate text-green-800 font-bold max-w-[70px]"
-                          title={resumeFile.name}
-                        >
-                          {resumeFile.name}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setResumeFile(null)}
-                          className="text-red-500 hover:text-red-700 cursor-pointer p-0.5 transition"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center py-2 px-1 border border-dashed border-slate-300 rounded-lg hover:border-[#D4AF37] hover:bg-white transition cursor-pointer text-center bg-white/50">
-                        <Upload className="w-3.5 h-3.5 text-slate-400 mb-0.5" />
-                        <span className="text-[8px] font-extrabold text-slate-700">
-                          Muat Naik CV
-                        </span>
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx,image/*"
-                          onChange={(e) => handleFileChange(e, "resume")}
-                          className="hidden"
-                        />
-                      </label>
-                    )}
-                  </div>
+            {/* 5. Usage Notes */}
+            <div className="md:col-span-2 space-y-1">
+              <label className="block font-bold text-slate-500 uppercase text-[9px]">Catatan Penggunaan (Skop Kerja):</label>
+              <input
+                type="text"
+                placeholder="E.g. Servis chemical 3 unit aircond ruang pejabat aras 2"
+                value={usageNotes}
+                onChange={(e) => setUsageNotes(e.target.value)}
+                className="w-full p-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none font-semibold text-slate-800"
+              />
+            </div>
 
-                  {/* CERTIFICATE UPLOAD */}
-                  <div className="space-y-1">
-                    <span className="block text-[8px] font-extrabold text-slate-500 uppercase tracking-wide">
-                      2. Sijil Elektrik/M&E
-                    </span>
-                    {certFile ? (
-                      <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-lg text-[9px]">
-                        <span
-                          className="truncate text-green-800 font-bold max-w-[70px]"
-                          title={certFile.name}
-                        >
-                          {certFile.name}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setCertFile(null)}
-                          className="text-red-500 hover:text-red-700 cursor-pointer p-0.5 transition"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center py-2 px-1 border border-dashed border-slate-300 rounded-lg hover:border-[#D4AF37] hover:bg-white transition cursor-pointer text-center bg-white/50">
-                        <Upload className="w-3.5 h-3.5 text-slate-400 mb-0.5" />
-                        <span className="text-[8px] font-extrabold text-slate-700">
-                          Muat Naik Sijil
-                        </span>
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx,image/*"
-                          onChange={(e) => handleFileChange(e, "cert")}
-                          className="hidden"
-                        />
-                      </label>
-                    )}
-                  </div>
-
-                  {/* OTHERS UPLOAD */}
-                  <div className="space-y-1">
-                    <span className="block text-[8px] font-extrabold text-slate-500 uppercase tracking-wide">
-                      3. Kad CIDB / Lain
-                    </span>
-                    {otherFile ? (
-                      <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-lg text-[9px]">
-                        <span
-                          className="truncate text-green-800 font-bold max-w-[70px]"
-                          title={otherFile.name}
-                        >
-                          {otherFile.name}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setOtherFile(null)}
-                          className="text-red-500 hover:text-red-700 cursor-pointer p-0.5 transition"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center py-2 px-1 border border-dashed border-slate-300 rounded-lg hover:border-[#D4AF37] hover:bg-white transition cursor-pointer text-center bg-white/50">
-                        <Upload className="w-3.5 h-3.5 text-slate-400 mb-0.5" />
-                        <span className="text-[8px] font-extrabold text-slate-700">
-                          Dokumen Lain
-                        </span>
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx,image/*"
-                          onChange={(e) => handleFileChange(e, "other")}
-                          className="hidden"
-                        />
-                      </label>
-                    )}
-                  </div>
-                </div>
-              </div>
-
+            <div className="md:col-span-2 pt-2">
               <button
                 type="submit"
-                disabled={isLoadingFile}
-                className="w-full flex items-center justify-center gap-2 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-slate-800 transition shadow-md disabled:opacity-50 cursor-pointer"
+                className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-[#D4AF37] font-bold rounded-xl uppercase tracking-wider transition cursor-pointer"
               >
-                <Send className="w-3.5 h-3.5 text-[#D4AF37]" />
-                <span>
-                  {isLoadingFile
-                    ? "Mengambil fail..."
-                    : "Hantar Borang Permohonan"}
-                </span>
+                Sahkan Penggunaan & Tolak Stok
               </button>
-            </form>
-          )}
+            </div>
+          </form>
         </div>
-      </motion.div>
+      )}
+
+      {/* ADD NEW ITEM MODAL / SECTION */}
+      {showAddForm && (
+        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-3xs">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+              <Plus className="w-4 h-4 text-[#D4AF37]" /> Pendaftaran Stok Bahan Baru BFG
+            </h4>
+            <button
+              onClick={() => setShowAddForm(false)}
+              className="text-[10px] bg-slate-200 hover:bg-slate-300 px-2 py-0.5 rounded-md font-bold text-slate-600 transition"
+            >
+              Tutup
+            </button>
+          </div>
+
+          <form onSubmit={handleAddNewItem} className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            {/* 1. Item Name */}
+            <div className="space-y-1">
+              <label className="block font-bold text-slate-500 uppercase text-[9px]">Nama Stok / Bahan:</label>
+              <input
+                type="text"
+                required
+                placeholder="E.g. Gas R410a Premium"
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+                className="w-full p-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none font-semibold text-slate-800"
+              />
+            </div>
+
+            {/* 2. Category */}
+            <div className="space-y-1">
+              <label className="block font-bold text-slate-500 uppercase text-[9px]">Kategori Bahan:</label>
+              <select
+                value={newItemCategory}
+                onChange={(e) => setNewItemCategory(e.target.value)}
+                className="w-full p-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none font-bold text-slate-700 h-[38px]"
+              >
+                <option value="Aircond">Aircond & Cooling</option>
+                <option value="Wiring">Wiring & Elektrikal</option>
+                <option value="Aksesori">Aksesori & Fittings</option>
+                <option value="Peralatan">Peralatan Teknikal</option>
+              </select>
+            </div>
+
+            {/* 3. Unit */}
+            <div className="space-y-1">
+              <label className="block font-bold text-slate-500 uppercase text-[9px]">Unit Pengukuran:</label>
+              <input
+                type="text"
+                required
+                placeholder="E.g. kg, meter, unit, kaki"
+                value={newItemUnit}
+                onChange={(e) => setNewItemUnit(e.target.value)}
+                className="w-full p-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none font-semibold text-slate-800"
+              />
+            </div>
+
+            {/* 4. Initial Stock */}
+            <div className="space-y-1">
+              <label className="block font-bold text-slate-500 uppercase text-[9px]">Kuantiti Stok Permulaan:</label>
+              <input
+                type="number"
+                required
+                min={1}
+                value={newItemStock}
+                onChange={(e) => setNewItemStock(Number(e.target.value))}
+                className="w-full p-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none font-semibold text-slate-800"
+              />
+            </div>
+
+            {/* 5. Min Alert */}
+            <div className="space-y-1">
+              <label className="block font-bold text-slate-500 uppercase text-[9px]">Stok Minimum Untuk Amaran:</label>
+              <input
+                type="number"
+                required
+                min={1}
+                value={newItemMin}
+                onChange={(e) => setNewItemMin(Number(e.target.value))}
+                className="w-full p-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none font-semibold text-slate-800"
+              />
+            </div>
+
+            <div className="flex items-end pb-0.5">
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl uppercase tracking-wider transition cursor-pointer shadow-xs text-[10.5px]"
+              >
+                Hantar Stok Baru
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* INVENTORY LISTING BENTO */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left 2 Cols: Material Stocks Grid */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+            <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider mb-4 flex items-center gap-1.5">
+              <Package className="w-4.5 h-4.5 text-[#D4AF37]" /> Senarai Baki Stok Semasa
+            </h4>
+
+            {isLoading ? (
+              <div className="py-12 text-center text-xs text-slate-400">Pemuatan Stok...</div>
+            ) : items.length === 0 ? (
+              <div className="py-12 text-center text-xs text-slate-400">Tiada stok berdaftar.</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {items.map((item) => {
+                  const isLow = item.stock <= item.minStock;
+                  const ratio = Math.min(100, (item.stock / (item.minStock * 4)) * 100);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-4 border rounded-2xl flex flex-col justify-between transition-all shadow-3xs ${
+                        isLow
+                          ? "bg-rose-50/55 border-rose-200"
+                          : "bg-slate-50/50 border-slate-200/80 hover:border-[#D4AF37]"
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-extrabold text-slate-400 uppercase bg-slate-100 px-2 py-0.5 rounded-full">
+                            {item.category}
+                          </span>
+                          {isLow && (
+                            <span className="text-[8.5px] font-black text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" /> STOK KRITIKAL
+                            </span>
+                          )}
+                        </div>
+                        <h5 className="font-bold text-xs text-slate-800 mt-1">{item.name}</h5>
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="flex items-baseline justify-between text-slate-800 mb-1.5">
+                          <span className="text-[10px] text-slate-500 font-semibold">Baki Semasa:</span>
+                          <span className="text-sm font-extrabold text-[#0F172A]">
+                            {item.stock} <span className="text-[10px] font-bold text-slate-500">{item.unit}</span>
+                          </span>
+                        </div>
+
+                        {/* Progress Meter Bar */}
+                        <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            style={{ width: `${ratio}%` }}
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              isLow ? "bg-rose-500" : "bg-emerald-500"
+                            }`}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between text-[8px] text-slate-400 font-bold mt-1">
+                          <span>0 {item.unit}</span>
+                          <span>Had Amaran: {item.minStock} {item.unit}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right 1 Col: Log Usage History */}
+        <div className="space-y-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm h-full max-h-[500px] flex flex-col">
+            <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider mb-3 flex items-center gap-1.5 shrink-0">
+              <History className="w-4.5 h-4.5 text-[#D4AF37]" /> Log Kegunaan Terbaru
+            </h4>
+
+            <div className="overflow-y-auto flex-grow pr-1 space-y-3.5 scrollbar-thin">
+              {transactions.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-400">Tiada log kegunaan dikesan.</div>
+              ) : (
+                transactions.map((tr) => (
+                  <div key={tr.id} className="p-3 bg-slate-50 border border-slate-150 rounded-xl space-y-2 text-[11px]">
+                    <div className="flex items-center justify-between text-[9px] text-slate-400">
+                      <span className="font-bold flex items-center gap-1 text-slate-500">
+                        <User className="w-3 h-3 text-[#D4AF37]" /> {tr.recordedBy}
+                      </span>
+                      <span>{new Date(tr.timestamp).toLocaleDateString("ms-MY")}</span>
+                    </div>
+
+                    <div>
+                      <span className="block font-extrabold text-[#0F172A] leading-snug">
+                        {tr.itemName} ({tr.quantityUsed} {tr.unit})
+                      </span>
+                      <span className="text-[9.5px] font-bold text-slate-500 block truncate">
+                        Projek: {tr.projectName}
+                      </span>
+                    </div>
+
+                    {tr.notes && (
+                      <p className="text-[9.5px] italic text-slate-500 bg-white p-1.5 rounded border border-slate-100">
+                        "{tr.notes}"
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

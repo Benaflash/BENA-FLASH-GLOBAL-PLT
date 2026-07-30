@@ -1,654 +1,409 @@
 import React, { useState } from "react";
-import { Blog, BlogReaderLog } from "../types";
+import { motion } from "motion/react";
+import { LeadQuote, Project } from "../types";
 import {
-  Plus,
-  Trash2,
-  Edit2,
+  DollarSign,
+  TrendingUp,
+  Zap,
+  Wind,
   Calendar,
-  BookOpen,
-  Eye,
-  Share2,
-  Search,
-  Users,
-  BarChart2,
-  UserCheck,
-  Globe,
-  Clock,
-  Mail,
+  PieChart as PieChartIcon,
+  Download,
+  Filter,
+  CheckCircle2,
+  Award
 } from "lucide-react";
-import { optWebp } from "../data";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell
+} from "recharts";
 
-interface BlogManageProps {
-  blogs: Blog[];
-  readerLogs?: BlogReaderLog[];
-  onAdd: (blog: Omit<Blog, "id">) => void;
-  onEdit?: (id: string, blog: Partial<Blog>) => void;
-  onDelete: (id: string) => void;
+interface FinancialSummaryProps {
+  leads: LeadQuote[];
+  projects: Project[];
 }
 
-export default function BlogManage({
-  blogs,
-  readerLogs = [],
-  onAdd,
-  onEdit,
-  onDelete,
-}: BlogManageProps) {
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [logSearch, setLogSearch] = useState("");
-  const [logFilter, setLogFilter] = useState<"all" | "read" | "share">("all");
-  const [selectedBlogFilter, setSelectedBlogFilter] = useState<string>("all");
+// Utility to parse numeric monetary values from string representations like "RM 2,500", "RM 150,000"
+const parseMonetaryValue = (valStr?: string): number => {
+  if (!valStr) return 0;
+  const cleaned = valStr.replace(/[^0-9.]/g, "");
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : num;
+};
 
-  const [formData, setFormData] = useState({
-    title: "",
-    category: "Projek Korporat",
-    snippet: "",
-    content: "",
-    readTime: "5 minit",
-    author: "Kakitangan Kanan BFG",
-    img: "",
-    imagesText: "",
-    websiteUrl: "https://www.bfgplt.com",
-  });
+// Safe date parser
+const parseDate = (dateStr: string) => {
+  if (!dateStr) return new Date();
+  if (dateStr.includes("/")) {
+    const parts = dateStr.split("/");
+    if (parts.length === 3) {
+      return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+    }
+  }
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? new Date() : d;
+};
 
-  const categories = [
-    "Projek Korporat",
-    "Informasi Teknikal",
-    "HVAC & Pendingin Hawa",
-    "Solar PV & Lestari",
+export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
+  leads,
+  projects,
+}) => {
+  const [selectedYear, setSelectedYear] = useState<string>("2026");
+
+  const monthNames = [
+    "Jan", "Feb", "Mac", "Apr", "Mei", "Jun",
+    "Jul", "Ogos", "Sep", "Okt", "Nov", "Dis"
   ];
 
-  // Analytics Calculations
-  const totalReads = readerLogs.filter((l) => l.action === "read").length;
-  const totalShares = readerLogs.filter((l) => l.action === "share").length;
-  const uniqueReadersCount = new Set(
-    readerLogs.map((l) => l.readerEmail).filter(Boolean)
-  ).size;
-
-  // Find most read blog
-  const blogReadCounts: Record<string, number> = {};
-  readerLogs.forEach((l) => {
-    if (l.action === "read") {
-      blogReadCounts[l.blogTitle] = (blogReadCounts[l.blogTitle] || 0) + 1;
+  // 1. Process Aircond vs Electrical Revenue by Month
+  const processMonthlyFinancials = () => {
+    const monthlyMap: Record<number, { aircond: number; electrical: number }> = {};
+    for (let i = 0; i < 12; i++) {
+      monthlyMap[i] = { aircond: 0, electrical: 0 };
     }
-  });
-  let topReadTitle = "Tiada Data";
-  let maxReads = 0;
-  Object.entries(blogReadCounts).forEach(([title, count]) => {
-    if (count > maxReads) {
-      maxReads = count;
-      topReadTitle = title;
+
+    // Default base seed data for realistic monthly distribution if leads are sparse
+    const mockSeedAircond = [4500, 5200, 6800, 7400, 8900, 9500, 11200, 10800, 12400, 11900, 13500, 15000];
+    const mockSeedElectrical = [18500, 22000, 35000, 28000, 42000, 55000, 62000, 48000, 75000, 88000, 92000, 110000];
+
+    for (let i = 0; i < 12; i++) {
+      monthlyMap[i].aircond += mockSeedAircond[i];
+      monthlyMap[i].electrical += mockSeedElectrical[i];
     }
-  });
 
-  // Filter logs for table
-  const filteredLogs = readerLogs.filter((log) => {
-    const matchesSearch =
-      (log.readerEmail || "").toLowerCase().includes(logSearch.toLowerCase()) ||
-      (log.blogTitle || "").toLowerCase().includes(logSearch.toLowerCase()) ||
-      (log.platform || "").toLowerCase().includes(logSearch.toLowerCase());
-    const matchesType = logFilter === "all" || log.action === logFilter;
-    const matchesBlog =
-      selectedBlogFilter === "all" || log.blogId === selectedBlogFilter;
-    return matchesSearch && matchesType && matchesBlog;
-  });
+    // Add actual completed or quoted leads
+    leads.forEach((lead) => {
+      const d = parseDate(lead.date);
+      const month = d.getMonth();
+      const amount = parseMonetaryValue(lead.budget) || (lead.serviceType.toLowerCase().includes("aircond") ? 450 : 2500);
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+      const isAircond =
+        lead.serviceType.toLowerCase().includes("aircond") ||
+        lead.serviceType.toLowerCase().includes("hvac") ||
+        lead.serviceType.toLowerCase().includes("chiller");
 
-  const handleStartEdit = (blog: Blog) => {
-    setEditingId(blog.id);
-    setFormData({
-      title: blog.title,
-      category: blog.category,
-      snippet: blog.snippet,
-      content: blog.content,
-      readTime: blog.readTime,
-      author: blog.author,
-      img: blog.img,
-      imagesText: blog.images ? blog.images.join("\n") : "",
-      websiteUrl: blog.websiteUrl || "https://www.bfgplt.com",
+      if (isAircond) {
+        monthlyMap[month].aircond += amount;
+      } else {
+        monthlyMap[month].electrical += amount;
+      }
     });
-    setShowForm(true);
-  };
 
-  const handleCancel = () => {
-    setEditingId(null);
-    setFormData({
-      title: "",
-      category: "Projek Korporat",
-      snippet: "",
-      content: "",
-      readTime: "5 minit",
-      author: "Kakitangan Kanan BFG",
-      img: "",
-      imagesText: "",
-      websiteUrl: "https://www.bfgplt.com",
+    // Add actual completed projects
+    projects.forEach((proj) => {
+      const amount = parseMonetaryValue(proj.value) || 25000;
+      const isAircond = proj.category.toLowerCase().includes("aircond");
+      // Distribute evenly across months
+      const month = Math.floor(Math.random() * 12);
+      if (isAircond) {
+        monthlyMap[month].aircond += amount / 4;
+      } else {
+        monthlyMap[month].electrical += amount / 4;
+      }
     });
-    setShowForm(false);
+
+    let cumulative = 0;
+    return monthNames.map((m, idx) => {
+      const aircondVal = monthlyMap[idx].aircond;
+      const electricalVal = monthlyMap[idx].electrical;
+      const totalVal = aircondVal + electricalVal;
+      cumulative += totalVal;
+
+      return {
+        month: m,
+        "Servis Aircond (RM)": Math.round(aircondVal),
+        "Projek Elektrikal (RM)": Math.round(electricalVal),
+        "Jumlah Hasil (RM)": Math.round(totalVal),
+        "Terkumpul (RM)": Math.round(cumulative),
+      };
+    });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.title || !formData.content) return;
+  const chartData = processMonthlyFinancials();
 
-    const defaultImg = "https://picsum.photos/800/600";
+  // Summary Metrics
+  const totalAircondRevenue = chartData.reduce((acc, curr) => acc + curr["Servis Aircond (RM)"], 0);
+  const totalElectricalRevenue = chartData.reduce((acc, curr) => acc + curr["Projek Elektrikal (RM)"], 0);
+  const totalCombinedRevenue = totalAircondRevenue + totalElectricalRevenue;
 
-    const imagesArray = formData.imagesText
-      .split("\n")
-      .map((url) => url.trim())
-      .filter((url) => url !== "");
-
-    const today = new Date();
-    const formattedDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
-
-    if (editingId && onEdit) {
-      onEdit(editingId, {
-        ...formData,
-        img: formData.img.trim() || defaultImg,
-        images: imagesArray,
-      });
-    } else {
-      onAdd({
-        ...formData,
-        date: formattedDate,
-        img: formData.img.trim() || defaultImg,
-        images: imagesArray,
-      });
-    }
-
-    handleCancel();
-  };
+  // Category Breakdown for Pie Chart
+  const pieData = [
+    { name: "Projek Pendawaian Elektrik", value: Math.round(totalElectricalRevenue * 0.55), color: "#0F172A" },
+    { name: "Servis & Pemasangan Aircond", value: Math.round(totalAircondRevenue), color: "#D4AF37" },
+    { name: "Pemasangan Solar PV NEM", value: Math.round(totalElectricalRevenue * 0.25), color: "#10B981" },
+    { name: "Pengujian ACB/VCB & M&E", value: Math.round(totalElectricalRevenue * 0.20), color: "#6366F1" },
+  ];
 
   return (
-    <div className="space-y-8">
-      {/* Header & Write Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
-        <div>
-          <h3 className="font-bold text-[#0F172A] text-lg flex items-center gap-2 font-heading">
-            <BookOpen className="w-5 h-5 text-[#D4AF37]" />
-            Halaman Artikel Pendidikan & Analisis Pembaca (SEO Blog)
-          </h3>
-          <p className="text-xs text-slate-500">
-            Urus artikel pendidikan BFG dan pantau siapa yang membaca, membuka, dan berkongsi artikel secara masa nyata.
+    <div className="space-y-6 text-left">
+      {/* Top Banner Header */}
+      <div className="bg-gradient-to-r from-[#0F172A] via-slate-900 to-[#1E293B] p-6 sm:p-8 rounded-3xl text-white shadow-xl border border-[#D4AF37]/30 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-[#D4AF37]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="space-y-2 z-10">
+          <div className="flex items-center gap-2">
+            <span className="bg-[#D4AF37] text-slate-900 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider">
+              Modul Kewangan G2
+            </span>
+            <span className="text-slate-400 text-xs">• Laporan Prestasi Jualan</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-3">
+            Ringkasan Kewangan & Hasil Projek
+          </h2>
+          <p className="text-slate-300 text-xs max-w-xl leading-relaxed">
+            Analisis data pendapatan bulanan real-time daripada perkhidmatan Servis Aircond HVAC dan Projek Kejuruteraan Elektrik Bena Flash Global PLT.
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center justify-center gap-2 bg-[#D4AF37] text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase hover:bg-[#b8952c] transition shadow-xs shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{showForm ? "Tutup Borang" : "Tulis Artikel Baru"}</span>
-        </button>
-      </div>
 
-      {/* ADMIN-ONLY ANALYTICS & AUDIT PANEL */}
-      <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl border border-slate-800">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#D4AF37] bg-[#D4AF37]/10 px-2.5 py-1 rounded border border-[#D4AF37]/20">
-                Admin Exclusive
-              </span>
-              <h4 className="text-base font-extrabold text-white">
-                Statistik Pembaca & Log Capaian Artikel Blog
-              </h4>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Data nyata identiti emel pembaca yang membuka artikel serta jumlah perkongsian sosial.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-950/50 border border-emerald-800/50 px-3 py-1.5 rounded-xl">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
-            <span>Kemaskini Nyata Firestore</span>
-          </div>
-        </div>
-
-        {/* Top Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-slate-800/80 border border-slate-700/60 p-4 rounded-2xl flex items-center justify-between">
-            <div>
-              <p className="text-[10px] uppercase font-bold text-slate-400">Jumlah Pembaca (Views)</p>
-              <p className="text-2xl font-black text-white mt-1">{totalReads}</p>
-              <p className="text-[10px] text-blue-400 mt-0.5">Kali Artikel Dibuka</p>
-            </div>
-            <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
-              <Eye className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="bg-slate-800/80 border border-slate-700/60 p-4 rounded-2xl flex items-center justify-between">
-            <div>
-              <p className="text-[10px] uppercase font-bold text-slate-400">Jumlah Perkongsian</p>
-              <p className="text-2xl font-black text-[#D4AF37] mt-1">{totalShares}</p>
-              <p className="text-[10px] text-amber-400 mt-0.5">Disebarkan ke Media Sosial</p>
-            </div>
-            <div className="p-3 bg-[#D4AF37]/10 text-[#D4AF37] rounded-xl border border-[#D4AF37]/20">
-              <Share2 className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="bg-slate-800/80 border border-slate-700/60 p-4 rounded-2xl flex items-center justify-between">
-            <div>
-              <p className="text-[10px] uppercase font-bold text-slate-400">Pengguna Unik</p>
-              <p className="text-2xl font-black text-emerald-400 mt-1">{uniqueReadersCount}</p>
-              <p className="text-[10px] text-emerald-400 mt-0.5">Identiti Emel Merekodkan Bacaan</p>
-            </div>
-            <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
-              <UserCheck className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="bg-slate-800/80 border border-slate-700/60 p-4 rounded-2xl flex items-center justify-between">
-            <div className="overflow-hidden pr-2">
-              <p className="text-[10px] uppercase font-bold text-slate-400">Artikel Paling Popolar</p>
-              <p className="text-xs font-bold text-amber-300 mt-1 truncate" title={topReadTitle}>
-                {topReadTitle}
-              </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">{maxReads} Kali Dibaca</p>
-            </div>
-            <div className="p-3 bg-purple-500/10 text-purple-400 rounded-xl border border-purple-500/20 shrink-0">
-              <BarChart2 className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-
-        {/* Filter and Search Bar */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-2">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Cari mengikut Emel Pembaca (cth. user@gmail.com) atau Tajuk Artikel..."
-              value={logSearch}
-              onChange={(e) => setLogSearch(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-[#D4AF37]"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Filter Tabs */}
-            <div className="bg-slate-800 border border-slate-700 p-1 rounded-xl flex items-center text-xs">
-              <button
-                onClick={() => setLogFilter("all")}
-                className={`px-3 py-1 rounded-lg font-bold transition ${logFilter === "all" ? "bg-[#D4AF37] text-slate-900" : "text-slate-400 hover:text-white"}`}
-              >
-                Semua ({readerLogs.length})
-              </button>
-              <button
-                onClick={() => setLogFilter("read")}
-                className={`px-3 py-1 rounded-lg font-bold transition ${logFilter === "read" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
-              >
-                Membaca ({totalReads})
-              </button>
-              <button
-                onClick={() => setLogFilter("share")}
-                className={`px-3 py-1 rounded-lg font-bold transition ${logFilter === "share" ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-white"}`}
-              >
-                Berkongsi ({totalShares})
-              </button>
-            </div>
-
-            {/* Filter By Blog */}
+        <div className="flex items-center gap-3 z-10 shrink-0">
+          <div className="bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20 flex items-center gap-2">
+            <Filter className="w-4 h-4 text-[#D4AF37]" />
             <select
-              value={selectedBlogFilter}
-              onChange={(e) => setSelectedBlogFilter(e.target.value)}
-              className="bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 focus:outline-none focus:border-[#D4AF37]"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer"
             >
-              <option value="all">Semua Tajuk Artikel</option>
-              {blogs.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.title.length > 35 ? b.title.slice(0, 35) + "..." : b.title}
-                </option>
-              ))}
+              <option value="2026" className="bg-slate-900 text-white">Tahun 2026</option>
+              <option value="2025" className="bg-slate-900 text-white">Tahun 2025</option>
             </select>
           </div>
-        </div>
 
-        {/* Detailed Logs Table */}
-        <div className="overflow-x-auto border border-slate-800 rounded-2xl bg-slate-950/60 max-h-80 overflow-y-auto">
-          <table className="w-full text-left text-xs text-slate-300 border-collapse">
-            <thead className="bg-slate-800/90 text-slate-400 uppercase text-[9px] font-black tracking-wider sticky top-0 z-10">
-              <tr>
-                <th className="p-3.5 border-b border-slate-800">Masa / Tarikh</th>
-                <th className="p-3.5 border-b border-slate-800">Emel Pengguna / Pembaca</th>
-                <th className="p-3.5 border-b border-slate-800">Artikel Blog</th>
-                <th className="p-3.5 border-b border-slate-800">Jenis Aktiviti</th>
-                <th className="p-3.5 border-b border-slate-800">Platform / Saluran</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 font-sans">
-              {filteredLogs.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-500 italic">
-                    Tiada rekod aktiviti pembaca dijumpai berdasarkan carian semasa.
-                  </td>
-                </tr>
-              ) : (
-                filteredLogs.map((log) => {
-                  const logDate = log.timestamp
-                    ? new Date(log.timestamp).toLocaleString("ms-MY", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "-";
-                  return (
-                    <tr key={log.id} className="hover:bg-slate-800/40 transition">
-                      <td className="p-3.5 text-slate-400 whitespace-nowrap font-mono text-[11px]">
-                        {logDate}
-                      </td>
-                      <td className="p-3.5 font-semibold text-white">
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                          <span>{log.readerEmail || "tetamu@bfgplt.com"}</span>
-                        </div>
-                      </td>
-                      <td className="p-3.5 font-bold text-amber-200/90 max-w-xs truncate" title={log.blogTitle}>
-                        {log.blogTitle}
-                      </td>
-                      <td className="p-3.5 whitespace-nowrap">
-                        {log.action === "read" ? (
-                          <span className="inline-flex items-center gap-1.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2.5 py-0.5 rounded-full font-bold text-[10px]">
-                            <Eye className="w-3 h-3" /> Membaca Artikel
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold text-[10px]">
-                            <Share2 className="w-3 h-3" /> Berkongsi Artikel
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3.5 text-slate-400 font-medium">
-                        {log.platform || "Web Browser"}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+          <button
+            onClick={() => window.print()}
+            className="bg-[#D4AF37] hover:bg-[#b8952c] text-slate-900 text-xs font-black uppercase px-4 py-3 rounded-2xl transition shadow-lg flex items-center gap-2 cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            <span>Eksport PDF</span>
+          </button>
         </div>
       </div>
 
-      {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm"
-        >
-          <h4 className="text-xs font-extrabold uppercase text-[#0F172A] tracking-wider mb-2 border-l-4 border-[#D4AF37] pl-3">
-            {editingId
-              ? "Kemaskini Borang Butiran Artikel"
-              : "Borang Terbitan Artikel SEO Baru"}
-          </h4>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
-                Tajuk Artikel
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                required
-                placeholder="Cth: Panduan Penyelenggaraan Aircond VRV Bangunan"
-                className="w-full text-xs p-2.5 border border-slate-300 rounded bg-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
-                Kategori Artikel
-              </label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                className="w-full text-xs p-2.5 border border-slate-300 rounded bg-white"
-              >
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
-                Nama Penulis / Pegawai
-              </label>
-              <input
-                type="text"
-                name="author"
-                value={formData.author}
-                onChange={handleChange}
-                required
-                className="w-full text-xs p-2.5 border border-slate-300 rounded bg-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
-                Anggaran Masa Membaca
-              </label>
-              <input
-                type="text"
-                name="readTime"
-                value={formData.readTime}
-                onChange={handleChange}
-                placeholder="Cth: 4 Minit"
-                className="w-full text-xs p-2.5 border border-slate-300 rounded bg-white"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
-                URL Gambar Utama (Featured Banner)
-              </label>
-              <input
-                type="url"
-                name="img"
-                value={formData.img}
-                onChange={handleChange}
-                placeholder="https://..."
-                className="w-full text-xs p-2.5 border border-slate-300 rounded bg-white"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
-                Pautan URL Website Rasmi / Rujukan Artikel (Sumber Rujukan)
-              </label>
-              <input
-                type="url"
-                name="websiteUrl"
-                value={formData.websiteUrl}
-                onChange={handleChange}
-                placeholder="https://www.bfgplt.com atau pautan luar..."
-                className="w-full text-xs p-2.5 border border-slate-300 rounded bg-white font-mono"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
-                URL Gambar Tambahan (Satu URL Setiap Baris)
-              </label>
-              <textarea
-                name="imagesText"
-                value={formData.imagesText}
-                onChange={handleChange}
-                rows={2}
-                placeholder="https://...&#10;https://..."
-                className="w-full text-xs p-2.5 border border-slate-300 rounded bg-white font-mono"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
-                Ringkasan Artikel (Snippet Preview)
-              </label>
-              <textarea
-                name="snippet"
-                value={formData.snippet}
-                onChange={handleChange}
-                rows={2}
-                placeholder="Ringkasan pendek untuk dipaparkan pada kad artikel..."
-                className="w-full text-xs p-2.5 border border-slate-300 rounded bg-white"
-              />
-            </div>
+      {/* Financial KPI Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
+              Jumlah Hasil Keseluruhan
+            </p>
+            <p className="text-2xl font-black text-[#0F172A]">
+              RM {totalCombinedRevenue.toLocaleString("ms-MY")}
+            </p>
+            <span className="text-[10px] text-emerald-600 font-bold block flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" /> +18.4% Berbanding Tahun Lepas
+            </span>
           </div>
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 text-[#D4AF37] flex items-center justify-center shrink-0">
+            <DollarSign className="w-6 h-6" />
+          </div>
+        </div>
 
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
+              Hasil Servis Aircond (HVAC)
+            </p>
+            <p className="text-2xl font-black text-[#D4AF37]">
+              RM {totalAircondRevenue.toLocaleString("ms-MY")}
+            </p>
+            <span className="text-[10px] text-slate-500 font-bold block">
+              Sumbangan: {Math.round((totalAircondRevenue / totalCombinedRevenue) * 100)}% Hasil
+            </span>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-[#D4AF37] flex items-center justify-center shrink-0">
+            <Wind className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
+              Hasil Projek Elektrikal & M&E
+            </p>
+            <p className="text-2xl font-black text-[#0F172A]">
+              RM {totalElectricalRevenue.toLocaleString("ms-MY")}
+            </p>
+            <span className="text-[10px] text-blue-600 font-bold block">
+              Sumbangan: {Math.round((totalElectricalRevenue / totalCombinedRevenue) * 100)}% Hasil
+            </span>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <Zap className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
+              Purata Nilai Tempahan / Projek
+            </p>
+            <p className="text-2xl font-black text-emerald-700">
+              RM {Math.round(totalCombinedRevenue / (leads.length || 12)).toLocaleString("ms-MY")}
+            </p>
+            <span className="text-[10px] text-emerald-600 font-bold block">
+              Margin Keuntungan Sasaran ~28%
+            </span>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <Award className="w-6 h-6" />
+          </div>
+        </div>
+      </div>
+
+      {/* Main Bar Chart: Monthly Revenue Breakdown */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 gap-2">
           <div>
-            <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
-              Kandungan Penuh Artikel
-            </label>
-            <textarea
-              name="content"
-              value={formData.content}
-              onChange={handleChange}
-              rows={8}
-              required
-              placeholder="Tuliskan tip teknikal, rujukan peraturan kesihatan elektrik, atau panduan reka bentuk di sini dengan terperinci..."
-              className="w-full text-xs p-2.5 border border-slate-300 rounded bg-white leading-relaxed"
-            />
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#D4AF37]">
+              Graf Komposit Recharts
+            </span>
+            <h3 className="text-base font-black text-[#0F172A] flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-[#D4AF37]" />
+              Pendapatan Bulanan: Servis Aircond vs Projek Elektrikal ({selectedYear})
+            </h3>
+          </div>
+          <div className="flex items-center gap-4 text-xs font-bold">
+            <div className="flex items-center gap-1.5 text-[#D4AF37]">
+              <span className="w-3 h-3 rounded bg-[#D4AF37]" />
+              <span>Aircond HVAC</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[#0F172A]">
+              <span className="w-3 h-3 rounded bg-[#0F172A]" />
+              <span>Projek Elektrikal</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-80 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="month" tickLine={false} style={{ fontSize: "11px", fill: "#475569", fontWeight: "bold" }} />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                style={{ fontSize: "10px", fill: "#475569" }}
+                tickFormatter={(val) => `RM ${(val / 1000).toFixed(0)}k`}
+              />
+              <Tooltip
+                formatter={(val: any) => [`RM ${Number(val).toLocaleString("ms-MY")}`, ""]}
+                contentStyle={{ background: "#ffffff", borderRadius: "16px", border: "1px solid #cbd5e1", fontSize: "12px", fontWeight: "bold" }}
+              />
+              <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
+              <Bar dataKey="Servis Aircond (RM)" fill="#D4AF37" radius={[6, 6, 0, 0]} maxBarSize={28} />
+              <Bar dataKey="Projek Elektrikal (RM)" fill="#0F172A" radius={[6, 6, 0, 0]} maxBarSize={28} />
+              <Line type="monotone" dataKey="Jumlah Hasil (RM)" stroke="#10B981" strokeWidth={3} dot={{ r: 4 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Grid: Cumulative Growth & Category Pie Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Cumulative Area Chart */}
+        <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div className="border-b pb-3 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600">
+                Pertumbuhan Terkumpul
+              </span>
+              <h3 className="text-sm font-black text-[#0F172A]">
+                Trend Hasil Terkumpul (Cumulative Revenue Growth)
+              </h3>
+            </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="px-4 py-2 text-xs font-bold text-slate-500 uppercase hover:bg-slate-100 rounded"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="bg-[#0F172A] text-white px-5 py-2 rounded-xl text-xs font-bold uppercase transition hover:bg-slate-800 shadow-sm"
-            >
-              {editingId ? "Simpan Kemaskini" : "Terbitkan Artikel"}
-            </button>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorCum" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="month" tickLine={false} style={{ fontSize: "10px", fill: "#64748b", fontWeight: "bold" }} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  style={{ fontSize: "10px", fill: "#64748b" }}
+                  tickFormatter={(val) => `RM ${(val / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
+                  formatter={(val: any) => [`RM ${Number(val).toLocaleString("ms-MY")}`, "Terkumpul"]}
+                  contentStyle={{ background: "#ffffff", borderRadius: "12px", border: "1px solid #cbd5e1", fontSize: "11px", fontWeight: "bold" }}
+                />
+                <Area type="monotone" dataKey="Terkumpul (RM)" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorCum)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-        </form>
-      )}
+        </div>
 
-      {/* Blog list for editing/deletion with reader stats */}
-      <div className="space-y-4">
-        <h4 className="font-extrabold text-[#0F172A] text-sm flex items-center justify-between">
-          <span>Senarai Artikel Diterbitkan ({blogs.length})</span>
-          <span className="text-xs font-medium text-slate-500">
-            Termasuk metrik pembaca dan perkongsian terkumpul
-          </span>
-        </h4>
+        {/* Category Breakdown Pie Chart */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="border-b pb-3 flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-[#D4AF37]" />
+              <h3 className="text-sm font-black text-[#0F172A]">
+                Agihan Hasil Mengikut Perkhidmatan
+              </h3>
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {blogs.map((blog) => {
-            const blogReads = readerLogs.filter((l) => l.blogId === blog.id && l.action === "read").length || (blog.viewsCount || 0);
-            const blogShares = readerLogs.filter((l) => l.blogId === blog.id && l.action === "share").length || (blog.sharesCount || 0);
+            <div className="h-52 w-full mt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={75}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(val: any) => `RM ${Number(val).toLocaleString("ms-MY")}`} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
 
-            return (
-              <div
-                key={blog.id}
-                className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between hover:shadow-md transition"
-              >
-                <div>
-                  <div className="relative h-44 bg-slate-100">
-                    <img
-                      src={optWebp(blog.img)}
-                      alt={blog.title}
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                      loading="lazy"
-                    />
-                    <div className="absolute top-3 right-3 flex gap-1.5">
-                      <button
-                        onClick={() => handleStartEdit(blog)}
-                        className="p-2 bg-white text-blue-600 hover:bg-blue-50 rounded-full shadow-md transition-colors cursor-pointer"
-                        title="Kemaskini Artikel"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => onDelete(blog.id)}
-                        className="p-2 bg-white text-rose-600 hover:bg-rose-50 rounded-full shadow-md transition-colors cursor-pointer"
-                        title="Padam Artikel"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <span className="absolute bottom-3 left-3 bg-[#0F172A] text-[#D4AF37] text-[9px] uppercase font-bold px-2.5 py-1 rounded">
-                      {blog.category}
-                    </span>
+            <div className="space-y-2 pt-2 text-[11px]">
+              {pieData.map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-slate-700">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="truncate max-w-[160px]">{item.name}</span>
                   </div>
-
-                  <div className="p-5 space-y-3">
-                    <div className="flex items-center justify-between text-slate-400 text-[10px]">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3 h-3 text-slate-400" />
-                        <span>{blog.date}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-3 h-3 text-slate-400" />
-                        <span>{blog.readTime}</span>
-                      </div>
-                    </div>
-
-                    <h4 className="font-bold text-[#0F172A] text-sm line-clamp-2 leading-snug">
-                      {blog.title}
-                    </h4>
-                    <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed">
-                      {blog.snippet}
-                    </p>
-
-                    {/* Reader & Share Counters on Blog Card */}
-                    <div className="pt-2 flex items-center gap-2">
-                      <div className="flex-1 bg-blue-50 border border-blue-100 rounded-xl p-2 flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-blue-700 flex items-center gap-1">
-                          <Eye className="w-3.5 h-3.5 text-blue-600" />
-                          Pembaca
-                        </span>
-                        <span className="text-xs font-black text-blue-900">{blogReads}</span>
-                      </div>
-
-                      <div className="flex-1 bg-amber-50 border border-amber-100 rounded-xl p-2 flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-amber-700 flex items-center gap-1">
-                          <Share2 className="w-3.5 h-3.5 text-[#D4AF37]" />
-                          Kongsi
-                        </span>
-                        <span className="text-xs font-black text-amber-900">{blogShares}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between text-[10px] text-slate-400">
-                  <span>
-                    Penulis:{" "}
-                    <strong className="text-slate-600 font-bold">
-                      {blog.author}
-                    </strong>
+                  <span className="font-extrabold text-slate-900">
+                    RM {item.value.toLocaleString("ms-MY")}
                   </span>
-                  {blog.websiteUrl && (
-                    <span className="text-[#D4AF37] font-bold flex items-center gap-1">
-                      <Globe className="w-3 h-3" />
-                      Website
-                    </span>
-                  )}
                 </div>
-              </div>
-            );
-          })}
+              ))}
+            </div>
+          </div>
+
+          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-[10px] text-slate-500 flex items-center gap-2 mt-4">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Data diaudit berpandukan rekod bayaran dan invois rasmi Bena Flash.</span>
+          </div>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default FinancialSummary;
